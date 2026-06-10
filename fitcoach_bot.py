@@ -874,7 +874,7 @@ async def unknown_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ═══════════════════════════════════════════════════════════════════
 
 def main():
-    if BOT_TOKEN == "YOUR_BOT_TOKEN_HERE":
+    if BOT_TOKEN == "8728837807:AAFuZjULLHiv1gUdV8zs2qwvbKeJxYwwgn8":
         logger.critical(
             "BOT_TOKEN is not set! "
             "Set the BOT_TOKEN environment variable or edit config at the top of this file."
