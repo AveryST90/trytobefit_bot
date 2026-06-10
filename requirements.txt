@@ -6,5 +6,4 @@ Django>=5.0.0
 gunicorn>=21.2.0
 whitenoise>=6.6.0
 psycopg[binary,pool]>=3.1.18
-gunicorn myproject.wsgi:application --bind 0.0.0.0:$PORT
 python-telegram-bot==21.10
