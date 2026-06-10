@@ -44,7 +44,7 @@ from telegram.ext import (
 #  ① CONFIG  — edit here or set environment variables
 # ═══════════════════════════════════════════════════════════════════
 
-BOT_TOKEN    = os.getenv("BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
+BOT_TOKEN    = os.getenv("BOT_TOKEN", "8728837807:AAFuZjULLHiv1gUdV8zs2qwvbKeJxYwwgn8")
 REMINDER_HOURS = [1, 2]   # send reminders 2h and 1h before each session
 MAX_CLIENTS  = 50
 DB_PATH      = Path(os.getenv("DB_PATH", "fitcoach.db"))
