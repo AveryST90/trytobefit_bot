@@ -44,7 +44,7 @@ from telegram.ext import (
 #  ① CONFIG  — edit here or set environment variables a
 # ═══════════════════════════════════════════════════════════════════
 
-BOT_TOKEN    = os.getenv("BOT_TOKEN", "8728837807:AAFuZjULLHiv1gUdV8zs2qwvbKeJxYwwgn8")
+BOT_TOKEN    = os.getenv("BOT_TOKEN", "8728837807:AAFpE51RGvnG0LzWfZyt_KQO6dctj9Tssf4")
 REMINDER_HOURS = [1, 2]   # send reminders 2h and 1h before each session
 MAX_CLIENTS  = 50
 DB_PATH      = Path(os.getenv("DB_PATH", "fitcoach.db"))
@@ -874,7 +874,7 @@ async def unknown_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ═══════════════════════════════════════════════════════════════════
 
 def main():
-    if BOT_TOKEN == "8728837807:AAFuZjULLHiv1gUdV8zs2qwvbKeJxYwwgn8":
+    if BOT_TOKEN == "8728837807:AAFpE51RGvnG0LzWfZyt_KQO6dctj9Tssf4":
         logger.critical(
             "BOT_TOKEN is not set! "
             "Set the BOT_TOKEN environment variable or edit config at the top of this file."
