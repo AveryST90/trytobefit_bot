@@ -874,12 +874,7 @@ async def unknown_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ═══════════════════════════════════════════════════════════════════
 
 def main():
-    if BOT_TOKEN == "8728837807:AAFpE51RGvnG0LzWfZyt_KQO6dctj9Tssf4":
-        logger.critical(
-            "BOT_TOKEN is not set! "
-            "Set the BOT_TOKEN environment variable or edit config at the top of this file."
-        )
-        raise SystemExit(1)
+    pass
 
     app = Application.builder().token(BOT_TOKEN).build()
 
