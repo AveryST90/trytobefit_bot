@@ -25,7 +25,7 @@ import asyncio
 from datetime import datetime, timedelta, date
 from pathlib import Path
 from typing import Optional
-
+from fastapi import FastAPI
 # ═══════════════════════════════════════════════════════════════════
 #  THIRD-PARTY  (pip install python-telegram-bot)
 # ═══════════════════════════════════════════════════════════════════
