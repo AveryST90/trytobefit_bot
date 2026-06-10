@@ -41,7 +41,7 @@ from telegram.ext import (
 )
 
 # ═══════════════════════════════════════════════════════════════════
-#  ① CONFIG  — edit here or set environment variables
+#  ① CONFIG  — edit here or set environment variables a
 # ═══════════════════════════════════════════════════════════════════
 
 BOT_TOKEN    = os.getenv("BOT_TOKEN", "8728837807:AAFuZjULLHiv1gUdV8zs2qwvbKeJxYwwgn8")
