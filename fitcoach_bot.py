@@ -24,7 +24,7 @@ from telegram.ext import (
     MessageHandler, ConversationHandler, ContextTypes, filters,
 )
 
-BOT_TOKEN      = os.getenv("BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
+BOT_TOKEN      = os.getenv("BOT_TOKEN", "8728837807:AAFpE51RGvnG0LzWfZyt_KQO6dctj9Tssf4")
 REMINDER_HOURS = [1, 2]
 MAX_CLIENTS    = 50
 DB_PATH        = Path(os.getenv("DB_PATH", "fitcoach.db"))
