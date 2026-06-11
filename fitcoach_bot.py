@@ -1321,6 +1321,26 @@ async def unknown_callback(update, context):
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
 
+    async def cancel_to_clients(update, context):
+        q = update.callback_query; await q.answer()
+        lang = get_lang(context)
+        await q.edit_message_text(
+            t(lang,"clients_menu", count=len(db.get_all_clients()), max=MAX_CLIENTS),
+            reply_markup=clients_menu_keyboard(lang), parse_mode="HTML")
+        return ConversationHandler.END
+
+    async def cancel_to_pkg(update, context):
+        q = update.callback_query; await q.answer()
+        lang = get_lang(context)
+        await q.edit_message_text(t(lang,"pkg_menu"), reply_markup=pkg_menu_keyboard(lang), parse_mode="HTML")
+        return ConversationHandler.END
+
+    async def cancel_to_main(update, context):
+        q = update.callback_query; await q.answer()
+        lang = get_lang(context)
+        await q.edit_message_text(t(lang,"main_menu"), reply_markup=main_menu_keyboard(lang), parse_mode="HTML")
+        return ConversationHandler.END
+
     add_client_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(add_client_start, pattern="^add_client$")],
         states={
@@ -1330,7 +1350,11 @@ def main():
             ADD_CLIENT_PKG_MONTH:[MessageHandler(filters.TEXT&~filters.COMMAND,add_client_pkg_month)],
             ADD_CLIENT_PKG_BOUGHT:[MessageHandler(filters.TEXT&~filters.COMMAND,add_client_pkg_bought)],
             ADD_CLIENT_PKG_USED:[MessageHandler(filters.TEXT&~filters.COMMAND,add_client_pkg_used)],
-        }, fallbacks=[CommandHandler("cancel",cancel)])
+        }, fallbacks=[
+            CommandHandler("cancel", cancel),
+            CallbackQueryHandler(cancel_to_clients, pattern="^clients_menu$"),
+            CallbackQueryHandler(cancel_to_main, pattern="^main_menu$"),
+        ])
 
     edit_client_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(edit_client_start, pattern="^edit_client_start$")],
@@ -1338,14 +1362,22 @@ def main():
             EDIT_CLIENT_SELECT:[CallbackQueryHandler(edit_client_select,pattern="^editcl:")],
             EDIT_CLIENT_FIELD:[CallbackQueryHandler(edit_client_field,pattern="^editcl_field:")],
             EDIT_CLIENT_VALUE:[MessageHandler(filters.TEXT&~filters.COMMAND,edit_client_value)],
-        }, fallbacks=[CommandHandler("cancel",cancel)])
+        }, fallbacks=[
+            CommandHandler("cancel", cancel),
+            CallbackQueryHandler(cancel_to_clients, pattern="^clients_menu$"),
+            CallbackQueryHandler(cancel_to_main, pattern="^main_menu$"),
+        ])
 
     del_client_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(delete_client_start, pattern="^delete_client$")],
         states={CONFIRM_DELETE_CLIENT:[
             CallbackQueryHandler(confirm_delete_client,pattern="^del_client:"),
             CallbackQueryHandler(execute_delete_client,pattern="^(confirm|cancel)_del_client$"),
-        ]}, fallbacks=[CommandHandler("cancel",cancel)])
+        ]}, fallbacks=[
+            CommandHandler("cancel", cancel),
+            CallbackQueryHandler(cancel_to_clients, pattern="^clients_menu$"),
+            CallbackQueryHandler(cancel_to_main, pattern="^main_menu$"),
+        ])
 
     add_session_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(add_session_start, pattern="^add_session$")],
@@ -1355,7 +1387,10 @@ def main():
             ADD_SESSION_TIME:[MessageHandler(filters.TEXT&~filters.COMMAND,add_session_time)],
             ADD_SESSION_DURATION:[MessageHandler(filters.TEXT&~filters.COMMAND,add_session_duration)],
             ADD_SESSION_NOTES:[MessageHandler(filters.TEXT&~filters.COMMAND,add_session_notes)],
-        }, fallbacks=[CommandHandler("cancel",cancel)])
+        }, fallbacks=[
+            CommandHandler("cancel", cancel),
+            CallbackQueryHandler(cancel_to_main, pattern="^(main_menu|schedule_menu)$"),
+        ])
 
     edit_session_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(edit_session_start, pattern="^edit_session_start$")],
@@ -1363,14 +1398,20 @@ def main():
             EDIT_SESSION_SELECT:[CallbackQueryHandler(edit_session_select,pattern="^editsess:")],
             EDIT_SESSION_FIELD:[CallbackQueryHandler(edit_session_field,pattern="^editsess_field:")],
             EDIT_SESSION_VALUE:[MessageHandler(filters.TEXT&~filters.COMMAND,edit_session_value)],
-        }, fallbacks=[CommandHandler("cancel",cancel)])
+        }, fallbacks=[
+            CommandHandler("cancel", cancel),
+            CallbackQueryHandler(cancel_to_main, pattern="^(main_menu|schedule_menu)$"),
+        ])
 
     del_session_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(delete_session_start, pattern="^delete_session$")],
         states={CONFIRM_DELETE_SESSION:[
             CallbackQueryHandler(confirm_delete_session,pattern="^del_sess:"),
             CallbackQueryHandler(execute_delete_session,pattern="^(confirm|cancel)_del_sess$"),
-        ]}, fallbacks=[CommandHandler("cancel",cancel)])
+        ]}, fallbacks=[
+            CommandHandler("cancel", cancel),
+            CallbackQueryHandler(cancel_to_main, pattern="^(main_menu|schedule_menu)$"),
+        ])
 
     add_plan_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(add_plan_start, pattern="^add_plan$")],
@@ -1378,7 +1419,10 @@ def main():
             ADD_PLAN_CLIENT:[CallbackQueryHandler(add_plan_client,pattern="^plan_client:")],
             ADD_PLAN_TITLE:[MessageHandler(filters.TEXT&~filters.COMMAND,add_plan_title)],
             ADD_PLAN_CONTENT:[MessageHandler(filters.TEXT&~filters.COMMAND,add_plan_content)],
-        }, fallbacks=[CommandHandler("cancel",cancel)])
+        }, fallbacks=[
+            CommandHandler("cancel", cancel),
+            CallbackQueryHandler(cancel_to_main, pattern="^(main_menu|workout_menu)$"),
+        ])
 
     add_pkg_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(add_pkg_start, pattern="^add_pkg_start$")],
@@ -1387,7 +1431,11 @@ def main():
             PKG_ENTER_MONTH:[MessageHandler(filters.TEXT&~filters.COMMAND,pkg_enter_month)],
             PKG_ENTER_BOUGHT:[MessageHandler(filters.TEXT&~filters.COMMAND,pkg_enter_bought)],
             PKG_ENTER_USED:[MessageHandler(filters.TEXT&~filters.COMMAND,pkg_enter_used)],
-        }, fallbacks=[CommandHandler("cancel",cancel)])
+        }, fallbacks=[
+            CommandHandler("cancel", cancel),
+            CallbackQueryHandler(cancel_to_pkg, pattern="^pkg_menu$"),
+            CallbackQueryHandler(cancel_to_main, pattern="^main_menu$"),
+        ])
 
     edit_pkg_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(edit_pkg_used_start, pattern="^edit_pkg_used_start$")],
@@ -1395,7 +1443,11 @@ def main():
             PKG_EDIT_SELECT_CLIENT:[CallbackQueryHandler(edit_pkg_select_client,pattern="^editpkg:")],
             PKG_EDIT_SELECT_MONTH:[CallbackQueryHandler(edit_pkg_select_month,pattern="^editpkgm:")],
             PKG_EDIT_ENTER_USED:[MessageHandler(filters.TEXT&~filters.COMMAND,edit_pkg_enter_used)],
-        }, fallbacks=[CommandHandler("cancel",cancel)])
+        }, fallbacks=[
+            CommandHandler("cancel", cancel),
+            CallbackQueryHandler(cancel_to_pkg, pattern="^pkg_menu$"),
+            CallbackQueryHandler(cancel_to_main, pattern="^main_menu$"),
+        ])
 
     app.add_handler(CommandHandler("start", start))
     for conv in [add_client_conv, edit_client_conv, del_client_conv,
@@ -1430,4 +1482,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-ENDOFFILE
