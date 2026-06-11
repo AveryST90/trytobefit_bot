@@ -453,7 +453,7 @@ class Database:
 
     def get_all_sessions(self, limit=50):
         rows = self.conn.execute(
-            "SELECT s.*, c.name AS client_name FROM sessions s JOIN clients c ON c.id=s.client_id ORDER BY s.session_date DESC, s.session_time DESC LIMIT ?",
+            "SELECT s.*, c.name AS client_name FROM sessions s JOIN clients c ON c.id=s.client_id ORDER BY s.session_date ASC, s.session_time ASC LIMIT ?",
             (limit,)).fetchall()
         return [dict(r) for r in rows]
 
