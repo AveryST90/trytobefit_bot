@@ -1,12 +1,19 @@
 """
 ╔══════════════════════════════════════════════════════════════════╗
-║                     FITCOACH BOT  v3                            ║
-║  NEW: Session packages per month, sessions used tracking,       ║
-║       bilingual RO/EN, new date format, language picker         ║
+║                        FITCOACH BOT  v2                         ║
+║              Telegram Bot for Fitness Trainers                  ║
+║                                                                  ║
+║  NEW in v2:                                                      ║
+║  • View All Clients shows phone + notes                         ║
+║  • Edit existing client (name / phone / notes)                  ║
+║  • Delete client — fully functional                             ║
+║  • Client history (added + deleted) with per-entry delete       ║
+║  • Edit existing session (date / time / duration / notes)       ║
+║  • View All Sessions with full details including notes          ║
 ╚══════════════════════════════════════════════════════════════════╝
 """
 
-import os, logging, sqlite3, asyncio, calendar
+import os, logging, sqlite3, asyncio
 from datetime import datetime, timedelta, date
 from pathlib import Path
 from typing import Optional
@@ -25,256 +32,7 @@ DB_PATH        = Path(os.getenv("DB_PATH", "fitcoach.db"))
 logging.basicConfig(format="%(asctime)s — %(name)s — %(levelname)s — %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# ═══════════════════════════════════════════════════════════════════
-#  TRANSLATIONS
-# ═══════════════════════════════════════════════════════════════════
-DAYS_RO  = ["Luni","Marți","Miercuri","Joi","Vineri","Sâmbătă","Duminică"]
-DAYS_EN  = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
-DAYS_SHORT_RO = ["Lun","Mar","Mie","Joi","Vin","Sâm","Dum"]
-DAYS_SHORT_EN = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
-MONTHS_RO = ["","Ianuarie","Februarie","Martie","Aprilie","Mai","Iunie","Iulie","August","Septembrie","Octombrie","Noiembrie","Decembrie"]
-MONTHS_EN = ["","January","February","March","April","May","June","July","August","September","October","November","December"]
 
-T = {
-    "EN": {
-        "welcome": "💪 <b>FitCoach Bot</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nWelcome back, <b>{name}</b>.\n\nManage your clients, schedule training sessions, assign workout plans, and receive timely reminders — all in one place.\n\nSelect an option below to get started.",
-        "main_menu": "🏋️ <b>FitCoach Bot — Main Menu</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nWhat would you like to manage today?",
-        "clients_menu": "👤 <b>Client Management</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nActive clients: <b>{count} / {max}</b>\n\nAdd, edit, remove clients, or view your full roster.",
-        "no_clients": "👤 <b>No clients yet.</b>\n\nAdd your first client to get started.",
-        "max_clients": "⚠️ <b>Client limit reached ({max} clients).</b>\n\nRemove an existing client before adding a new one.",
-        "client_added": "✅ <b>{name}</b> added to your roster.",
-        "client_updated": "✅ <b>{name}</b> profile updated successfully.",
-        "confirm_del_client": "⚠️ <b>Remove Client</b>\n\nRemove <b>{name}</b> from your roster?\n\n<i>All sessions and workout plans will also be deleted. This cannot be undone.</i>",
-        "client_deleted": "✅ <b>{name}</b> has been removed from your roster.",
-        "schedule_menu": "📅 <b>Schedule</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nView your schedule or manage sessions.",
-        "no_clients_for_session": "⚠️ No clients on your roster yet.\n\nAdd at least one client before scheduling a session.",
-        "session_added": "✅ <b>Session Scheduled</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n👤 Client   : <b>{name}</b>\n📅 Date     : {date}\n⏱ Duration : {duration} min\n\n<i>You'll receive a reminder 1h and 2h before this session.</i>",
-        "session_updated": "✅ Session for <b>{name}</b> updated successfully.",
-        "confirm_del_session": "⚠️ <b>Cancel Session</b>\n\nCancel the session with <b>{name}</b>\non {date}?\n\n<i>This action cannot be undone.</i>",
-        "session_deleted": "✅ Session removed from your schedule.",
-        "reminder": "🔔 <b>Session Reminder</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n⏰ <b>{hours} hour{plural}</b> until your session with:\n\n👤 <b>{name}</b>\n🕐 {time}  •  {duration} min",
-        "workout_menu": "📋 <b>Workout Plans</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nCreate and manage personalised workout plans for each client.",
-        "plan_added": "✅ <b>Workout Plan Saved</b>\n\n👤 Client : <b>{name}</b>\n📋 Plan   : {title}",
-        "no_plans": "No workout plans found.",
-        "cancelled": "Operation cancelled.",
-        "deletion_cancelled": "Deletion cancelled.",
-        "client_not_found": "Client not found.",
-        "no_upcoming": "No upcoming sessions found.",
-        "no_sessions_edit": "No upcoming sessions to edit.",
-        "no_sessions_all": "No sessions found.",
-        "history_empty": "No history yet.",
-        "pkg_month_prompt": "Enter the month for this package:\n<code>Format: MM/YYYY  (e.g. 06/2025)</code>",
-        "pkg_bought_prompt": "How many sessions did <b>{name}</b> buy for {month}?",
-        "pkg_used_prompt": "How many sessions has <b>{name}</b> used so far in {month}?\n<i>(Type 0 if none yet)</i>",
-        "pkg_saved": "✅ Package saved: <b>{name}</b> — {month}\n📦 Bought: {bought}  |  ✅ Used: {used}  |  🔄 Left: {left}",
-        "pkg_menu": "📦 <b>Session Packages</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nManage monthly session packages per client.",
-        "pkg_none": "No packages found for this client.",
-        "sessions_left": "sessions left",
-        "of": "of",
-        "free": "Free",
-        "no_sessions_day": "No sessions scheduled.",
-        "total": "Total",
-        "session_s": "session",
-        "sessions_s": "sessions",
-        "this_month": "this month",
-        "joined": "Joined",
-        "next": "Next",
-        "btn_clients": "👤  Clients",
-        "btn_schedule": "📅  Schedule",
-        "btn_plans": "📋  Workout Plans",
-        "btn_add_client": "➕  Add Client",
-        "btn_edit_client": "✏️  Edit Client",
-        "btn_del_client": "🗑  Remove Client",
-        "btn_view_all": "📋  View All",
-        "btn_history": "🕑  History",
-        "btn_main_menu": "↩  Main Menu",
-        "btn_today": "📅  Today",
-        "btn_week": "📆  This Week",
-        "btn_month": "🗓  This Month",
-        "btn_all_sess": "📋  All Sessions",
-        "btn_add_sess": "➕  Add Session",
-        "btn_edit_sess": "✏️  Edit Session",
-        "btn_del_sess": "🗑  Cancel Session",
-        "btn_new_plan": "➕  New Plan",
-        "btn_all_plans": "📋  All Plans",
-        "btn_plans_by": "👤  Plans by Client",
-        "btn_pkg": "📦  Packages",
-        "btn_add_pkg": "➕  Add Package",
-        "btn_view_pkg": "📊  View Packages",
-        "btn_edit_used": "✏️  Update Used",
-        "btn_confirm": "✅  Confirm",
-        "btn_cancel": "✖  Cancel",
-        "btn_back": "↩  Back",
-        "select_client": "Select a client:",
-        "select_edit_field": "What would you like to edit?",
-        "enter_name": "➕ <b>New Client</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nEnter the client's full name:",
-        "enter_phone": "Enter the client's phone number:\n<i>(Type <code>skip</code> to leave blank)</i>",
-        "enter_notes": "Any notes for this client?\n<i>e.g. injuries, goals, preferences\n(Type <code>skip</code> to leave blank)</i>",
-        "field_name": "full name", "field_phone": "phone number", "field_notes": "notes",
-        "field_sessions_bought": "sessions bought this month",
-        "field_sessions_used": "sessions used this month",
-        "enter_field": "Enter the new <b>{label}</b>:\n<i>(Type <code>skip</code> to clear)</i>",
-        "enter_field_num": "Enter the new <b>{label}</b>:\n<i>(Enter a number, e.g. 8)</i>",
-        "invalid_date": "⚠️ Invalid format. Use DD/MM/YYYY:",
-        "invalid_time": "⚠️ Invalid format. Use HH:MM (e.g. 09:30):",
-        "invalid_duration": "⚠️ Enter a valid number of minutes (e.g. 60):",
-        "invalid_number": "⚠️ Enter a valid number:",
-        "past_date": "⚠️ Date is in the past. Enter a future date (DD/MM/YYYY):",
-        "date_prompt": "Enter the date:\n<code>Format: DD/MM/YYYY  (e.g. 25/06/2025)</code>",
-        "time_prompt": "Enter the start time:\n<code>Format: HH:MM  (e.g. 09:30)</code>",
-        "duration_prompt": "Session duration in minutes:\n<code>e.g. 60</code>",
-        "notes_prompt": "Session notes:\n<i>(Type <code>skip</code> to leave blank)</i>",
-        "roster_title": "<b>👤 Client Roster</b>\n",
-        "history_title": "<b>🕑 Client History</b>\n",
-        "all_sessions_title": "<b>📋 All Sessions</b>\n",
-        "editing_session": "<b>✏️ Editing Session</b>\n\n👤 {name}\n📅 {date}\n⏱ {duration} min\n📝 {notes}\n\nWhat would you like to change?",
-        "editing_client": "<b>✏️ Editing: {name}</b>\n\n📞 Phone : {phone}\n📝 Notes : {notes}\n📦 Sessions bought : {bought}\n✅ Sessions used  : {used}\n\nWhat would you like to edit?",
-        "del_hist_btn": "🗑 Delete: {name} ({date})",
-        "week_of": "Week of",
-        "select_sess_edit": "<b>✏️ Edit Session</b>\n\nSelect a session to edit:",
-        "select_sess_del": "<b>🗑 Cancel Session</b>\n\nSelect the session to remove:",
-        "plan_title_prompt": "Enter the plan title:\n<i>e.g. Week 1 — Strength Foundation</i>",
-        "plan_content_prompt": "<b>📋 Workout Plan Content</b>\n\nEnter the full workout plan:\n\n<code>Day 1 — Push\nBench Press 4×8\nShoulder Press 3×10\n\nDay 2 — Pull\nDeadlift 4×5\nRows 3×12</code>",
-        "view_plan_title": "<b>📋 View Plan</b>\n\nSelect a client:",
-        "invalid_month": "⚠️ Invalid format. Use MM/YYYY (e.g. 06/2025):",
-        "pkg_update_used_prompt": "Enter the new number of <b>sessions used</b> for {name} in {month}:",
-        "pkg_not_found": "No package found for this month.",
-        "language_prompt": "🌍 <b>Choose your language / Alege limba</b>",
-    },
-    "RO": {
-        "welcome": "💪 <b>FitCoach Bot</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nBine ai revenit, <b>{name}</b>.\n\nGestionează clienții, programează antrenamentele, atribuie planuri de exerciții și primește memento-uri — totul într-un singur loc.\n\nSelectează o opțiune pentru a începe.",
-        "main_menu": "🏋️ <b>FitCoach Bot — Meniu Principal</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nCe dorești să gestionezi astăzi?",
-        "clients_menu": "👤 <b>Gestionare Clienți</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nClienți activi: <b>{count} / {max}</b>\n\nAdaugă, editează, elimină clienți sau vizualizează lista completă.",
-        "no_clients": "👤 <b>Niciun client încă.</b>\n\nAdaugă primul client pentru a începe.",
-        "max_clients": "⚠️ <b>Limită atinsă ({max} clienți).</b>\n\nElimină un client existent înainte de a adăuga unul nou.",
-        "client_added": "✅ <b>{name}</b> a fost adăugat în lista ta.",
-        "client_updated": "✅ Profilul <b>{name}</b> a fost actualizat cu succes.",
-        "confirm_del_client": "⚠️ <b>Elimină Client</b>\n\nElimini <b>{name}</b> din lista ta?\n\n<i>Toate sesiunile și planurile sale vor fi șterse. Această acțiune nu poate fi anulată.</i>",
-        "client_deleted": "✅ <b>{name}</b> a fost eliminat din lista ta.",
-        "schedule_menu": "📅 <b>Program</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nVizualizează programul sau gestionează sesiunile.",
-        "no_clients_for_session": "⚠️ Niciun client în lista ta.\n\nAdaugă cel puțin un client înainte de a programa o sesiune.",
-        "session_added": "✅ <b>Sesiune Programată</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n👤 Client   : <b>{name}</b>\n📅 Data     : {date}\n⏱ Durată   : {duration} min\n\n<i>Vei primi un memento cu 1h și 2h înainte de sesiune.</i>",
-        "session_updated": "✅ Sesiunea pentru <b>{name}</b> a fost actualizată.",
-        "confirm_del_session": "⚠️ <b>Anulează Sesiunea</b>\n\nAnulezi sesiunea cu <b>{name}</b>\ndin {date}?\n\n<i>Această acțiune nu poate fi anulată.</i>",
-        "session_deleted": "✅ Sesiunea a fost eliminată din program.",
-        "reminder": "🔔 <b>Memento Sesiune</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n⏰ <b>{hours} oră{plural}</b> până la sesiunea cu:\n\n👤 <b>{name}</b>\n🕐 {time}  •  {duration} min",
-        "workout_menu": "📋 <b>Planuri de Antrenament</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nCreează și gestionează planuri personalizate pentru fiecare client.",
-        "plan_added": "✅ <b>Plan Salvat</b>\n\n👤 Client : <b>{name}</b>\n📋 Plan   : {title}",
-        "no_plans": "Nu s-au găsit planuri de antrenament.",
-        "cancelled": "Operație anulată.",
-        "deletion_cancelled": "Ștergere anulată.",
-        "client_not_found": "Clientul nu a fost găsit.",
-        "no_upcoming": "Nu există sesiuni viitoare.",
-        "no_sessions_edit": "Nu există sesiuni viitoare de editat.",
-        "no_sessions_all": "Nu s-au găsit sesiuni.",
-        "history_empty": "Niciun istoric încă.",
-        "pkg_month_prompt": "Introdu luna pentru acest pachet:\n<code>Format: MM/YYYY  (ex: 06/2025)</code>",
-        "pkg_bought_prompt": "Câte ședințe a cumpărat <b>{name}</b> pentru {month}?",
-        "pkg_used_prompt": "Câte ședințe a folosit <b>{name}</b> până acum în {month}?\n<i>(Scrie 0 dacă niciuna)</i>",
-        "pkg_saved": "✅ Pachet salvat: <b>{name}</b> — {month}\n📦 Cumpărate: {bought}  |  ✅ Folosite: {used}  |  🔄 Rămase: {left}",
-        "pkg_menu": "📦 <b>Pachete Ședințe</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nGestionează pachetele lunare de ședințe per client.",
-        "pkg_none": "Nu s-au găsit pachete pentru acest client.",
-        "sessions_left": "ședințe rămase",
-        "of": "din",
-        "free": "Liber",
-        "no_sessions_day": "Nicio sesiune programată.",
-        "total": "Total",
-        "session_s": "ședință",
-        "sessions_s": "ședințe",
-        "this_month": "în această lună",
-        "joined": "Înregistrat",
-        "next": "Următor",
-        "btn_clients": "👤  Clienți",
-        "btn_schedule": "📅  Program",
-        "btn_plans": "📋  Planuri",
-        "btn_add_client": "➕  Adaugă Client",
-        "btn_edit_client": "✏️  Editează Client",
-        "btn_del_client": "🗑  Elimină Client",
-        "btn_view_all": "📋  Vezi Toți",
-        "btn_history": "🕑  Istoric",
-        "btn_main_menu": "↩  Meniu Principal",
-        "btn_today": "📅  Azi",
-        "btn_week": "📆  Săptămâna",
-        "btn_month": "🗓  Luna",
-        "btn_all_sess": "📋  Toate Sesiunile",
-        "btn_add_sess": "➕  Adaugă Sesiune",
-        "btn_edit_sess": "✏️  Editează Sesiune",
-        "btn_del_sess": "🗑  Anulează Sesiune",
-        "btn_new_plan": "➕  Plan Nou",
-        "btn_all_plans": "📋  Toate Planurile",
-        "btn_plans_by": "👤  Planuri per Client",
-        "btn_pkg": "📦  Pachete",
-        "btn_add_pkg": "➕  Adaugă Pachet",
-        "btn_view_pkg": "📊  Vezi Pachete",
-        "btn_edit_used": "✏️  Actualizează Folosite",
-        "btn_confirm": "✅  Confirmă",
-        "btn_cancel": "✖  Anulează",
-        "btn_back": "↩  Înapoi",
-        "select_client": "Selectează un client:",
-        "select_edit_field": "Ce dorești să editezi?",
-        "enter_name": "➕ <b>Client Nou</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nIntrodu numele complet al clientului:",
-        "enter_phone": "Introdu numărul de telefon:\n<i>(Scrie <code>skip</code> pentru a lăsa gol)</i>",
-        "enter_notes": "Note despre acest client?\n<i>ex: accidentări, obiective, preferințe\n(Scrie <code>skip</code> pentru a lăsa gol)</i>",
-        "field_name": "nume complet", "field_phone": "număr de telefon", "field_notes": "note",
-        "field_sessions_bought": "ședințe cumpărate luna aceasta",
-        "field_sessions_used": "ședințe folosite luna aceasta",
-        "enter_field": "Introdu noul <b>{label}</b>:\n<i>(Scrie <code>skip</code> pentru a șterge)</i>",
-        "enter_field_num": "Introdu noul <b>{label}</b>:\n<i>(Introdu un număr, ex: 8)</i>",
-        "invalid_date": "⚠️ Format invalid. Folosește ZZ/LL/AAAA:",
-        "invalid_time": "⚠️ Format invalid. Folosește HH:MM (ex: 09:30):",
-        "invalid_duration": "⚠️ Introdu un număr valid de minute (ex: 60):",
-        "invalid_number": "⚠️ Introdu un număr valid:",
-        "past_date": "⚠️ Data este în trecut. Introdu o dată viitoare (ZZ/LL/AAAA):",
-        "date_prompt": "Introdu data:\n<code>Format: ZZ/LL/AAAA  (ex: 25/06/2025)</code>",
-        "time_prompt": "Introdu ora de start:\n<code>Format: HH:MM  (ex: 09:30)</code>",
-        "duration_prompt": "Durata sesiunii în minute:\n<code>ex: 60</code>",
-        "notes_prompt": "Note sesiune:\n<i>(Scrie <code>skip</code> pentru a lăsa gol)</i>",
-        "roster_title": "<b>👤 Listă Clienți</b>\n",
-        "history_title": "<b>🕑 Istoric Clienți</b>\n",
-        "all_sessions_title": "<b>📋 Toate Sesiunile</b>\n",
-        "editing_session": "<b>✏️ Editare Sesiune</b>\n\n👤 {name}\n📅 {date}\n⏱ {duration} min\n📝 {notes}\n\nCe dorești să modifici?",
-        "editing_client": "<b>✏️ Editare: {name}</b>\n\n📞 Telefon : {phone}\n📝 Note : {notes}\n📦 Ședințe cumpărate : {bought}\n✅ Ședințe folosite  : {used}\n\nCe dorești să editezi?",
-        "del_hist_btn": "🗑 Șterge: {name} ({date})",
-        "week_of": "Săptămâna",
-        "select_sess_edit": "<b>✏️ Editează Sesiunea</b>\n\nSelectează sesiunea de editat:",
-        "select_sess_del": "<b>🗑 Anulează Sesiunea</b>\n\nSelectează sesiunea de eliminat:",
-        "plan_title_prompt": "Introdu titlul planului:\n<i>ex: Săptămâna 1 — Forță</i>",
-        "plan_content_prompt": "<b>📋 Conținut Plan</b>\n\nIntrodu planul complet de antrenament:\n\n<code>Ziua 1 — Împins\nFloating 4×8\nPrese umeri 3×10\n\nZiua 2 — Tras\nDeadlift 4×5\nTracțiuni 3×12</code>",
-        "view_plan_title": "<b>📋 Vezi Plan</b>\n\nSelectează un client:",
-        "invalid_month": "⚠️ Format invalid. Folosește LL/AAAA (ex: 06/2025):",
-        "pkg_update_used_prompt": "Introdu noul număr de <b>ședințe folosite</b> pentru {name} în {month}:",
-        "pkg_not_found": "Nu s-a găsit niciun pachet pentru această lună.",
-        "language_prompt": "🌍 <b>Choose your language / Alege limba</b>",
-    }
-}
-
-def t(lang, key, **kwargs):
-    txt = T.get(lang, T["EN"]).get(key, T["EN"].get(key, key))
-    if kwargs:
-        try: txt = txt.format(**kwargs)
-        except: pass
-    return txt
-
-def get_lang(context) -> str:
-    return context.user_data.get("lang", "EN")
-
-def fmt_date(d, time_str=None, lang="EN"):
-    """Format: Luni / 25 Iunie / 09:30  or  Monday / 25 June / 09:30"""
-    if isinstance(d, str):
-        try: d = datetime.strptime(d, "%Y-%m-%d").date()
-        except: return str(d)
-    dow = d.weekday()
-    day_name = (DAYS_RO if lang=="RO" else DAYS_EN)[dow]
-    month_name = (MONTHS_RO if lang=="RO" else MONTHS_EN)[d.month]
-    base = f"{day_name} / {d.day:02d} {month_name}"
-    if time_str:
-        return f"{base} / {time_str}"
-    return base
-
-
-# ═══════════════════════════════════════════════════════════════════
-#  DATABASE
-# ═══════════════════════════════════════════════════════════════════
 class Database:
     def __init__(self):
         self.conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
@@ -285,17 +43,13 @@ class Database:
         self.conn.executescript("""
             PRAGMA foreign_keys = ON;
             CREATE TABLE IF NOT EXISTS clients (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL, phone TEXT, notes TEXT,
-                sessions_bought INTEGER DEFAULT 0,
-                sessions_used   INTEGER DEFAULT 0,
-                pkg_month       TEXT DEFAULT '',
-                created_at TEXT DEFAULT (date('now'))
+                id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL,
+                phone TEXT, notes TEXT, created_at TEXT DEFAULT (date('now'))
             );
             CREATE TABLE IF NOT EXISTS client_history (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                action TEXT NOT NULL, client_name TEXT NOT NULL,
-                phone TEXT, notes TEXT, action_at TEXT DEFAULT (datetime('now'))
+                id INTEGER PRIMARY KEY AUTOINCREMENT, action TEXT NOT NULL,
+                client_name TEXT NOT NULL, phone TEXT, notes TEXT,
+                action_at TEXT DEFAULT (datetime('now'))
             );
             CREATE TABLE IF NOT EXISTS sessions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -305,13 +59,6 @@ class Database:
                 reminded_1h INTEGER DEFAULT 0, reminded_2h INTEGER DEFAULT 0,
                 created_at TEXT DEFAULT (datetime('now'))
             );
-            CREATE TABLE IF NOT EXISTS session_packages (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
-                pkg_month TEXT NOT NULL,
-                sessions_bought INTEGER DEFAULT 0,
-                sessions_used   INTEGER DEFAULT 0
-            );
             CREATE TABLE IF NOT EXISTS workout_plans (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
@@ -320,13 +67,6 @@ class Database:
             );
             CREATE TABLE IF NOT EXISTS trainer_chat (id INTEGER PRIMARY KEY, chat_id INTEGER NOT NULL);
         """)
-        # migrate existing clients table if columns missing
-        try:
-            self.conn.execute("ALTER TABLE clients ADD COLUMN sessions_bought INTEGER DEFAULT 0")
-            self.conn.execute("ALTER TABLE clients ADD COLUMN sessions_used INTEGER DEFAULT 0")
-            self.conn.execute("ALTER TABLE clients ADD COLUMN pkg_month TEXT DEFAULT ''")
-            self.conn.commit()
-        except: pass
         self.conn.commit()
 
     def set_trainer_chat(self, chat_id):
@@ -339,7 +79,6 @@ class Database:
         row = self.conn.execute("SELECT chat_id FROM trainer_chat WHERE id=1").fetchone()
         return row["chat_id"] if row else None
 
-    # ── Clients ───────────────────────────────────────────────────
     def get_all_clients(self):
         return [dict(r) for r in self.conn.execute("SELECT * FROM clients ORDER BY name").fetchall()]
 
@@ -347,26 +86,21 @@ class Database:
         row = self.conn.execute("SELECT * FROM clients WHERE id=?", (cid,)).fetchone()
         return dict(row) if row else None
 
-    def add_client(self, name, phone, notes, sessions_bought=0, sessions_used=0, pkg_month=""):
+    def add_client(self, name, phone, notes):
         cur = self.conn.cursor()
-        cur.execute("INSERT INTO clients (name, phone, notes, sessions_bought, sessions_used, pkg_month) VALUES (?, ?, ?, ?, ?, ?)",
-                    (name, phone, notes, sessions_bought, sessions_used, pkg_month))
+        cur.execute("INSERT INTO clients (name, phone, notes) VALUES (?, ?, ?)", (name, phone, notes))
         self.conn.commit()
         self._log_history("ADDED", name, phone, notes)
         return cur.lastrowid
 
-    def update_client(self, cid, name, phone, notes, sessions_bought=None, sessions_used=None, pkg_month=None):
-        c = self.get_client(cid)
-        sb = sessions_bought if sessions_bought is not None else c.get("sessions_bought", 0)
-        su = sessions_used   if sessions_used   is not None else c.get("sessions_used", 0)
-        pm = pkg_month       if pkg_month       is not None else c.get("pkg_month", "")
-        self.conn.execute("UPDATE clients SET name=?, phone=?, notes=?, sessions_bought=?, sessions_used=?, pkg_month=? WHERE id=?",
-                          (name, phone, notes, sb, su, pm, cid))
+    def update_client(self, cid, name, phone, notes):
+        self.conn.execute("UPDATE clients SET name=?, phone=?, notes=? WHERE id=?", (name, phone, notes, cid))
         self.conn.commit()
 
     def delete_client(self, cid):
         c = self.get_client(cid)
-        if c: self._log_history("DELETED", c["name"], c.get("phone",""), c.get("notes",""))
+        if c:
+            self._log_history("DELETED", c["name"], c.get("phone",""), c.get("notes",""))
         self.conn.execute("DELETE FROM clients WHERE id=?", (cid,))
         self.conn.commit()
 
@@ -375,7 +109,7 @@ class Database:
         row = self.conn.execute(
             "SELECT session_date, session_time FROM sessions WHERE client_id=? AND session_date >= ? ORDER BY session_date, session_time LIMIT 1",
             (cid, today)).fetchone()
-        return (row["session_date"], row["session_time"]) if row else None
+        return f"{row['session_date']}  {row['session_time']}" if row else None
 
     def _log_history(self, action, name, phone, notes):
         self.conn.execute("INSERT INTO client_history (action, client_name, phone, notes) VALUES (?, ?, ?, ?)",
@@ -389,30 +123,6 @@ class Database:
         self.conn.execute("DELETE FROM client_history WHERE id=?", (entry_id,))
         self.conn.commit()
 
-    # ── Session Packages ──────────────────────────────────────────
-    def upsert_package(self, client_id, pkg_month, sessions_bought, sessions_used):
-        row = self.conn.execute("SELECT id FROM session_packages WHERE client_id=? AND pkg_month=?", (client_id, pkg_month)).fetchone()
-        if row:
-            self.conn.execute("UPDATE session_packages SET sessions_bought=?, sessions_used=? WHERE id=?",
-                              (sessions_bought, sessions_used, row["id"]))
-        else:
-            self.conn.execute("INSERT INTO session_packages (client_id, pkg_month, sessions_bought, sessions_used) VALUES (?, ?, ?, ?)",
-                              (client_id, pkg_month, sessions_bought, sessions_used))
-        self.conn.commit()
-
-    def get_packages_for_client(self, client_id):
-        rows = self.conn.execute("SELECT * FROM session_packages WHERE client_id=? ORDER BY pkg_month DESC", (client_id,)).fetchall()
-        return [dict(r) for r in rows]
-
-    def get_package(self, client_id, pkg_month):
-        row = self.conn.execute("SELECT * FROM session_packages WHERE client_id=? AND pkg_month=?", (client_id, pkg_month)).fetchone()
-        return dict(row) if row else None
-
-    def get_current_package(self, client_id):
-        cur_month = date.today().strftime("%m/%Y")
-        return self.get_package(client_id, cur_month)
-
-    # ── Sessions ──────────────────────────────────────────────────
     def add_session(self, client_id, session_date, session_time, duration, notes):
         time_str = session_time.strftime("%H:%M") if hasattr(session_time, "strftime") else str(session_time)
         cur = self.conn.cursor()
@@ -462,7 +172,8 @@ class Database:
         self.conn.commit()
 
     def get_sessions_needing_reminder(self, hours_before):
-        now = datetime.now(); target = now + timedelta(hours=hours_before)
+        now = datetime.now()
+        target = now + timedelta(hours=hours_before)
         col = f"reminded_{hours_before}h"
         rows = self.conn.execute(
             f"SELECT s.*, c.name AS client_name FROM sessions s JOIN clients c ON c.id=s.client_id WHERE s.{col}=0 AND s.session_date=? AND s.session_time BETWEEN ? AND ? ORDER BY s.session_time",
@@ -477,84 +188,72 @@ class Database:
     def add_plan(self, client_id, title, content):
         cur = self.conn.cursor()
         cur.execute("INSERT INTO workout_plans (client_id, title, content) VALUES (?, ?, ?)", (client_id, title, content))
-        self.conn.commit(); return cur.lastrowid
+        self.conn.commit()
+        return cur.lastrowid
 
     def get_plans_for_client(self, client_id):
         rows = self.conn.execute("SELECT * FROM workout_plans WHERE client_id=? ORDER BY created_at DESC", (client_id,)).fetchall()
         return [dict(r) for r in rows]
 
 
-# ═══════════════════════════════════════════════════════════════════
-#  KEYBOARDS
-# ═══════════════════════════════════════════════════════════════════
-def main_menu_keyboard(lang):
+WELCOME_MSG = "💪 <b>FitCoach Bot</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nWelcome back, <b>{name}</b>.\n\nManage your clients, schedule training sessions, assign workout plans, and receive timely reminders — all in one place.\n\nSelect an option below to get started."
+MAIN_MENU_MSG = "🏋️ <b>FitCoach Bot — Main Menu</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nWhat would you like to manage today?"
+CLIENTS_MENU_MSG = "👤 <b>Client Management</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nActive clients: <b>{count} / {max}</b>\n\nAdd, edit, remove clients, or view your full roster."
+NO_CLIENTS_MSG = "👤 <b>No clients yet.</b>\n\nAdd your first client to get started."
+MAX_CLIENTS_MSG = "⚠️ <b>Client limit reached ({max} clients).</b>\n\nRemove an existing client before adding a new one."
+CLIENT_ADDED_MSG = "✅ <b>{name}</b> added to your roster.\n<i>Client ID: {id}</i>"
+CLIENT_UPDATED_MSG = "✅ <b>{name}</b> profile updated successfully."
+CONFIRM_DELETE_CLIENT_MSG = "⚠️ <b>Remove Client</b>\n\nRemove <b>{name}</b> from your roster?\n\n<i>All sessions and workout plans for this client will also be deleted. This cannot be undone.</i>"
+CLIENT_DELETED_MSG = "✅ <b>{name}</b> has been removed from your roster."
+SCHEDULE_MENU_MSG = "📅 <b>Schedule</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nView your schedule or manage sessions."
+NO_CLIENTS_FOR_SESSION = "⚠️ No clients on your roster yet.\n\nAdd at least one client before scheduling a session."
+SESSION_ADDED_MSG = "✅ <b>Session Scheduled</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n👤 Client   : <b>{name}</b>\n📅 Date     : {date}\n🕐 Time     : {time}\n⏱ Duration : {duration} min\n\n<i>You'll receive a reminder 1 h and 2 h before this session.</i>"
+SESSION_UPDATED_MSG = "✅ Session for <b>{name}</b> updated successfully."
+CONFIRM_DELETE_SESSION_MSG = "⚠️ <b>Cancel Session</b>\n\nCancel the session with <b>{name}</b>\non {date} at {time}?\n\n<i>This action cannot be undone.</i>"
+REMINDER_MSG = "🔔 <b>Session Reminder</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n⏰ <b>{hours} hour{plural}</b> until your session with:\n\n👤 <b>{name}</b>\n🕐 {time}  •  {duration} min"
+WORKOUT_MENU_MSG = "📋 <b>Workout Plans</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nCreate and manage personalised workout plans for each client."
+PLAN_ADDED_MSG = "✅ <b>Workout Plan Saved</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n👤 Client : <b>{name}</b>\n📋 Plan   : {title}"
+
+
+def main_menu_keyboard():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(t(lang,"btn_clients"), callback_data="clients_menu"),
-         InlineKeyboardButton(t(lang,"btn_schedule"), callback_data="schedule_menu")],
-        [InlineKeyboardButton(t(lang,"btn_plans"), callback_data="workout_menu")],
-        [InlineKeyboardButton("🌍 EN / RO", callback_data="change_lang")],
+        [InlineKeyboardButton("👤  Clients", callback_data="clients_menu"), InlineKeyboardButton("📅  Schedule", callback_data="schedule_menu")],
+        [InlineKeyboardButton("📋  Workout Plans", callback_data="workout_menu")],
     ])
 
-def clients_menu_keyboard(lang):
+def clients_menu_keyboard():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(t(lang,"btn_add_client"), callback_data="add_client"),
-         InlineKeyboardButton(t(lang,"btn_edit_client"), callback_data="edit_client_start")],
-        [InlineKeyboardButton(t(lang,"btn_del_client"), callback_data="delete_client"),
-         InlineKeyboardButton(t(lang,"btn_view_all"), callback_data="list_clients")],
-        [InlineKeyboardButton(t(lang,"btn_history"), callback_data="client_history"),
-         InlineKeyboardButton(t(lang,"btn_pkg"), callback_data="pkg_menu")],
-        [InlineKeyboardButton(t(lang,"btn_main_menu"), callback_data="main_menu")],
+        [InlineKeyboardButton("➕  Add Client", callback_data="add_client"), InlineKeyboardButton("✏️  Edit Client", callback_data="edit_client_start")],
+        [InlineKeyboardButton("🗑  Remove Client", callback_data="delete_client"), InlineKeyboardButton("📋  View All", callback_data="list_clients")],
+        [InlineKeyboardButton("🕑  History", callback_data="client_history")],
+        [InlineKeyboardButton("↩  Main Menu", callback_data="main_menu")],
     ])
 
-def schedule_menu_keyboard(lang):
+def schedule_menu_keyboard():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(t(lang,"btn_today"), callback_data="view_today"),
-         InlineKeyboardButton(t(lang,"btn_week"), callback_data="view_weekly"),
-         InlineKeyboardButton(t(lang,"btn_month"), callback_data="view_monthly")],
-        [InlineKeyboardButton(t(lang,"btn_all_sess"), callback_data="view_all_sessions")],
-        [InlineKeyboardButton(t(lang,"btn_add_sess"), callback_data="add_session"),
-         InlineKeyboardButton(t(lang,"btn_edit_sess"), callback_data="edit_session_start")],
-        [InlineKeyboardButton(t(lang,"btn_del_sess"), callback_data="delete_session")],
-        [InlineKeyboardButton(t(lang,"btn_main_menu"), callback_data="main_menu")],
+        [InlineKeyboardButton("📅  Today", callback_data="view_today"), InlineKeyboardButton("📆  This Week", callback_data="view_weekly"), InlineKeyboardButton("🗓  This Month", callback_data="view_monthly")],
+        [InlineKeyboardButton("📋  All Sessions", callback_data="view_all_sessions")],
+        [InlineKeyboardButton("➕  Add Session", callback_data="add_session"), InlineKeyboardButton("✏️  Edit Session", callback_data="edit_session_start")],
+        [InlineKeyboardButton("🗑  Cancel Session", callback_data="delete_session")],
+        [InlineKeyboardButton("↩  Main Menu", callback_data="main_menu")],
     ])
 
-def workout_menu_keyboard(lang):
+def workout_menu_keyboard():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(t(lang,"btn_new_plan"), callback_data="add_plan"),
-         InlineKeyboardButton(t(lang,"btn_all_plans"), callback_data="list_plans")],
-        [InlineKeyboardButton(t(lang,"btn_plans_by"), callback_data="view_client_plan")],
-        [InlineKeyboardButton(t(lang,"btn_main_menu"), callback_data="main_menu")],
+        [InlineKeyboardButton("➕  New Plan", callback_data="add_plan"), InlineKeyboardButton("📋  All Plans", callback_data="list_plans")],
+        [InlineKeyboardButton("👤  Plans by Client", callback_data="view_client_plan")],
+        [InlineKeyboardButton("↩  Main Menu", callback_data="main_menu")],
     ])
 
-def pkg_menu_keyboard(lang):
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton(t(lang,"btn_add_pkg"), callback_data="add_pkg_start"),
-         InlineKeyboardButton(t(lang,"btn_view_pkg"), callback_data="view_pkg_start")],
-        [InlineKeyboardButton(t(lang,"btn_edit_used"), callback_data="edit_pkg_used_start")],
-        [InlineKeyboardButton(t(lang,"btn_back"), callback_data="clients_menu")],
-    ])
+def confirm_keyboard(confirm_data, cancel_data):
+    return InlineKeyboardMarkup([[InlineKeyboardButton("✅  Confirm", callback_data=confirm_data), InlineKeyboardButton("✖  Cancel", callback_data=cancel_data)]])
 
-def confirm_keyboard(lang, confirm_data, cancel_data):
-    return InlineKeyboardMarkup([[
-        InlineKeyboardButton(t(lang,"btn_confirm"), callback_data=confirm_data),
-        InlineKeyboardButton(t(lang,"btn_cancel"), callback_data=cancel_data),
-    ]])
-
-def client_list_keyboard(clients, prefix, lang):
+def client_list_keyboard(clients, prefix):
     rows = [[InlineKeyboardButton(c["name"], callback_data=f"{prefix}:{c['id']}")] for c in clients]
-    rows.append([InlineKeyboardButton(t(lang,"btn_cancel"), callback_data="main_menu")])
+    rows.append([InlineKeyboardButton("✖  Cancel", callback_data="main_menu")])
     return InlineKeyboardMarkup(rows)
 
-def language_keyboard():
-    return InlineKeyboardMarkup([[
-        InlineKeyboardButton("🇬🇧 English", callback_data="set_lang:EN"),
-        InlineKeyboardButton("🇷🇴 Română",  callback_data="set_lang:RO"),
-    ]])
 
-
-# ═══════════════════════════════════════════════════════════════════
-#  SCHEDULER
-# ═══════════════════════════════════════════════════════════════════
 async def reminder_loop(app, db):
     while True:
         try:
@@ -563,7 +262,8 @@ async def reminder_loop(app, db):
                 for hours in REMINDER_HOURS:
                     for s in db.get_sessions_needing_reminder(hours):
                         await app.bot.send_message(chat_id=chat_id, parse_mode="HTML",
-                            text=f"🔔 <b>Session Reminder</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n⏰ <b>{hours}h</b> until session with:\n\n👤 <b>{s['client_name']}</b>\n🕐 {s['session_time']}  •  {s['duration']} min")
+                            text=REMINDER_MSG.format(hours=hours, plural="" if hours==1 else "s",
+                                                     name=s["client_name"], time=s["session_time"], duration=s["duration"]))
                         db.mark_reminded(s["id"], hours)
         except Exception as exc:
             logger.error("Reminder error: %s", exc)
@@ -575,27 +275,17 @@ def setup_scheduler(app, db):
     app.post_init = _start
 
 
-# ═══════════════════════════════════════════════════════════════════
-#  CONVERSATION STATES
-# ═══════════════════════════════════════════════════════════════════
-(ADD_CLIENT_NAME, ADD_CLIENT_PHONE, ADD_CLIENT_NOTES, ADD_CLIENT_PKG_MONTH, ADD_CLIENT_PKG_BOUGHT, ADD_CLIENT_PKG_USED,
+(ADD_CLIENT_NAME, ADD_CLIENT_PHONE, ADD_CLIENT_NOTES,
  EDIT_CLIENT_SELECT, EDIT_CLIENT_FIELD, EDIT_CLIENT_VALUE,
  ADD_SESSION_CLIENT, ADD_SESSION_DATE, ADD_SESSION_TIME, ADD_SESSION_DURATION, ADD_SESSION_NOTES,
  EDIT_SESSION_SELECT, EDIT_SESSION_FIELD, EDIT_SESSION_VALUE,
  ADD_PLAN_CLIENT, ADD_PLAN_TITLE, ADD_PLAN_CONTENT,
- CONFIRM_DELETE_CLIENT, CONFIRM_DELETE_SESSION,
- PKG_SELECT_CLIENT, PKG_ENTER_MONTH, PKG_ENTER_BOUGHT, PKG_ENTER_USED,
- PKG_EDIT_SELECT_CLIENT, PKG_EDIT_SELECT_MONTH, PKG_EDIT_ENTER_USED) = range(29)
+ CONFIRM_DELETE_CLIENT, CONFIRM_DELETE_SESSION) = range(19)
 
 
-# ═══════════════════════════════════════════════════════════════════
-#  FORMATTERS
-# ═══════════════════════════════════════════════════════════════════
-def fmt_daily(day, sessions, lang):
-    month_name = (MONTHS_RO if lang=="RO" else MONTHS_EN)[day.month]
-    dow = (DAYS_RO if lang=="RO" else DAYS_EN)[day.weekday()]
-    h = f"<b>📅 {dow} / {day.day:02d} {month_name} / {day.year}</b>\n" + "─"*28 + "\n\n"
-    if not sessions: return h + f"<i>{t(lang,'no_sessions_day')}</i>"
+def fmt_daily(day, sessions):
+    h = f"<b>📅 {day.strftime('%A, %d %B %Y')}</b>\n" + "─"*28 + "\n\n"
+    if not sessions: return h + "<i>No sessions scheduled.</i>"
     body = ""
     for s in sorted(sessions, key=lambda x: x["session_time"]):
         body += f"🕐 <b>{s['session_time']}</b>  {s['client_name']}  <i>({s['duration']} min)</i>\n"
@@ -603,460 +293,473 @@ def fmt_daily(day, sessions, lang):
         body += "\n"
     return h + body
 
-def fmt_weekly(monday, week, lang):
-    month_name = (MONTHS_RO if lang=="RO" else MONTHS_EN)[monday.month]
-    txt = f"<b>📆 {t(lang,'week_of')} {monday.day:02d} {month_name}</b>\n" + "─"*28 + "\n\n"
-    short = DAYS_SHORT_RO if lang=="RO" else DAYS_SHORT_EN
+def fmt_weekly(monday, week):
+    txt = f"<b>📆 Week of {monday.strftime('%d %B %Y')}</b>\n" + "─"*28 + "\n\n"
     for i, (d, sessions) in enumerate(week.items()):
         marker = "▶" if d == date.today() else "  "
-        txt += f"{marker} <b>{short[i]} {d.strftime('%d/%m')}</b>\n"
+        txt += f"{marker} <b>{['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i]} {d.strftime('%d/%m')}</b>\n"
         if sessions:
             for s in sorted(sessions, key=lambda x: x["session_time"]):
                 txt += f"    {s['session_time']} — {s['client_name']} ({s['duration']}m)\n"
-        else: txt += f"    <i>{t(lang,'free')}</i>\n"
+        else: txt += "    <i>Free</i>\n"
         txt += "\n"
     return txt
 
-def fmt_monthly(today, sessions, lang):
-    month_name = (MONTHS_RO if lang=="RO" else MONTHS_EN)[today.month]
-    txt = f"<b>🗓 {month_name} {today.year}</b>\n" + "─"*28 + "\n\n"
+def fmt_monthly(today, sessions):
+    txt = f"<b>🗓 {today.strftime('%B %Y')}</b>\n" + "─"*28 + "\n\n"
     by_day = {}
     for s in sessions: by_day.setdefault(s["session_date"], []).append(s)
-    if not by_day: return txt + f"<i>{t(lang,'no_sessions_day')}</i>"
-    short = DAYS_SHORT_RO if lang=="RO" else DAYS_SHORT_EN
+    if not by_day: return txt + "<i>No sessions this month.</i>"
     for d in sorted(by_day):
         day_obj = datetime.strptime(d, "%Y-%m-%d").date() if isinstance(d, str) else d
-        txt += f"{'▶ ' if day_obj==today else ''}<b>{short[day_obj.weekday()]} {day_obj.strftime('%d/%m')}</b>\n"
+        txt += f"{'▶ ' if day_obj==today else ''}<b>{day_obj.strftime('%a %d')}</b>\n"
         for s in sorted(by_day[d], key=lambda x: x["session_time"]):
             txt += f"  {s['session_time']} {s['client_name']} ({s['duration']}m)\n"
         txt += "\n"
     total = sum(len(v) for v in by_day.values())
-    sess_word = t(lang,"session_s") if total==1 else t(lang,"sessions_s")
-    txt += f"<i>{t(lang,'total')}: {total} {sess_word} {t(lang,'this_month')}</i>"
+    txt += f"<i>Total: {total} session{'s' if total!=1 else ''} this month</i>"
     return txt
 
-def pkg_bar(used, bought):
-    if bought == 0: return "—"
-    filled = min(used, bought)
-    bar = "🟢" * filled + "⚪" * max(0, bought - filled)
-    return bar
 
 db = Database()
 
-
-# ═══════════════════════════════════════════════════════════════════
-#  HANDLERS
-# ═══════════════════════════════════════════════════════════════════
-
 async def start(update, context):
     db.set_trainer_chat(update.effective_chat.id)
-    await update.message.reply_text(t("EN","language_prompt"), reply_markup=language_keyboard(), parse_mode="HTML")
-
-async def set_language(update, context):
-    q = update.callback_query; await q.answer()
-    lang = q.data.split(":")[1]
-    context.user_data["lang"] = lang
-    await q.edit_message_text(t(lang,"welcome",name=update.effective_user.first_name),
-                               reply_markup=main_menu_keyboard(lang), parse_mode="HTML")
-
-async def change_lang(update, context):
-    q = update.callback_query; await q.answer()
-    await q.edit_message_text(t("EN","language_prompt"), reply_markup=language_keyboard(), parse_mode="HTML")
+    await update.message.reply_text(WELCOME_MSG.format(name=update.effective_user.first_name), reply_markup=main_menu_keyboard(), parse_mode="HTML")
 
 async def cmd_main_menu(update, context):
-    q = update.callback_query; await q.answer(); lang = get_lang(context)
-    await q.edit_message_text(t(lang,"main_menu"), reply_markup=main_menu_keyboard(lang), parse_mode="HTML")
+    q = update.callback_query; await q.answer()
+    await q.edit_message_text(MAIN_MENU_MSG, reply_markup=main_menu_keyboard(), parse_mode="HTML")
 
 async def cmd_clients_menu(update, context):
-    q = update.callback_query; await q.answer(); lang = get_lang(context)
-    await q.edit_message_text(t(lang,"clients_menu",count=len(db.get_all_clients()),max=MAX_CLIENTS),
-                               reply_markup=clients_menu_keyboard(lang), parse_mode="HTML")
+    q = update.callback_query; await q.answer()
+    await q.edit_message_text(CLIENTS_MENU_MSG.format(count=len(db.get_all_clients()), max=MAX_CLIENTS), reply_markup=clients_menu_keyboard(), parse_mode="HTML")
 
 async def cmd_list_clients(update, context):
-    q = update.callback_query; await q.answer(); lang = get_lang(context)
+    q = update.callback_query; await q.answer()
     clients = db.get_all_clients()
     if not clients:
-        await q.edit_message_text(t(lang,"no_clients"), reply_markup=clients_menu_keyboard(lang), parse_mode="HTML"); return
-    txt = t(lang,"roster_title") + "─"*28 + "\n\n"
+        await q.edit_message_text(NO_CLIENTS_MSG, reply_markup=clients_menu_keyboard(), parse_mode="HTML"); return
+    txt = "<b>👤 Client Roster</b>\n" + "─"*28 + "\n\n"
     for i, c in enumerate(clients, 1):
         ns = db.get_next_session_for_client(c["id"])
-        pkg = db.get_current_package(c["id"])
-        left = (pkg["sessions_bought"] - pkg["sessions_used"]) if pkg else 0
-        bought = pkg["sessions_bought"] if pkg else 0
-        txt += f"<b>{i:02d}. {c['name']}</b>\n"
-        txt += f"   📞 {c['phone'] or '—'}\n"
-        txt += f"   📝 {c['notes'] or '—'}\n"
-        if pkg:
-            txt += f"   📦 {pkg['pkg_month']}: {left} {t(lang,'sessions_left')} ({t(lang,'of')} {bought})\n"
-            txt += f"   {pkg_bar(pkg['sessions_used'], pkg['sessions_bought'])}\n"
-        if ns: txt += f"   ⏭ {t(lang,'next')}: <i>{fmt_date(ns[0], ns[1], lang)}</i>\n"
+        txt += f"<b>{i:02d}. {c['name']}</b>\n   📞 {c['phone'] or '—'}\n   📝 {c['notes'] or '—'}\n   📅 Joined: {c['created_at']}\n"
+        if ns: txt += f"   ⏭ Next: <i>{ns}</i>\n"
         txt += "\n"
-    if len(txt) > 4000: txt = txt[:3990] + "\n<i>…</i>"
-    await q.edit_message_text(txt, reply_markup=clients_menu_keyboard(lang), parse_mode="HTML")
+    if len(txt) > 4000: txt = txt[:3990] + "\n<i>… truncated</i>"
+    await q.edit_message_text(txt, reply_markup=clients_menu_keyboard(), parse_mode="HTML")
 
-# ── Add client ────────────────────────────────────────────────────
 async def add_client_start(update, context):
-    q = update.callback_query; await q.answer(); lang = get_lang(context)
+    q = update.callback_query; await q.answer()
     if len(db.get_all_clients()) >= MAX_CLIENTS:
-        await q.edit_message_text(t(lang,"max_clients",max=MAX_CLIENTS), reply_markup=clients_menu_keyboard(lang), parse_mode="HTML")
-        return ConversationHandler.END
-    await q.edit_message_text(t(lang,"enter_name"), parse_mode="HTML")
+        await q.edit_message_text(MAX_CLIENTS_MSG.format(max=MAX_CLIENTS), reply_markup=clients_menu_keyboard(), parse_mode="HTML"); return ConversationHandler.END
+    await q.edit_message_text("➕ <b>New Client</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nEnter the client's full name:", parse_mode="HTML")
     return ADD_CLIENT_NAME
 
 async def add_client_name(update, context):
     context.user_data["nc"] = {"name": update.message.text.strip()}
-    lang = get_lang(context)
-    await update.message.reply_text(t(lang,"enter_phone"), parse_mode="HTML")
+    await update.message.reply_text("Enter the client's phone number:\n<i>(Type <code>skip</code> to leave blank)</i>", parse_mode="HTML")
     return ADD_CLIENT_PHONE
 
 async def add_client_phone(update, context):
-    lang = get_lang(context); txt = update.message.text.strip()
+    txt = update.message.text.strip()
     context.user_data["nc"]["phone"] = "" if txt.lower()=="skip" else txt
-    await update.message.reply_text(t(lang,"enter_notes"), parse_mode="HTML")
+    await update.message.reply_text("Any notes for this client?\n<i>e.g. injuries, goals, preferences\n(Type <code>skip</code> to leave blank)</i>", parse_mode="HTML")
     return ADD_CLIENT_NOTES
 
 async def add_client_notes(update, context):
-    lang = get_lang(context); d = context.user_data["nc"]
+    d = context.user_data["nc"]
     d["notes"] = "" if update.message.text.strip().lower()=="skip" else update.message.text.strip()
-    await update.message.reply_text(t(lang,"pkg_month_prompt"), parse_mode="HTML")
-    return ADD_CLIENT_PKG_MONTH
+    cid = db.add_client(d["name"], d["phone"], d["notes"])
+    await update.message.reply_text(CLIENT_ADDED_MSG.format(name=d["name"], id=cid), reply_markup=clients_menu_keyboard(), parse_mode="HTML")
+    return ConversationHandler.END
 
-async def add_client_pkg_month(update, context):
-    lang = get_lang(context); txt = update.message.text.strip()
-    if txt.lower() == "skip":
-        context.user_data["nc"]["pkg_month"] = ""
-        cid = db.add_client(context.user_data["nc"]["name"], context.user_data["nc"]["phone"], context.user_data["nc"]["notes"])
-        await update.message.reply_text(t(lang,"client_added",name=context.user_data["nc"]["name"]),
-                                         reply_markup=clients_menu_keyboard(lang), parse_mode="HTML")
-        return ConversationHandler.END
-    try:
-        datetime.strptime(txt, "%m/%Y")
-        context.user_data["nc"]["pkg_month"] = txt
-        await update.message.reply_text(
-            t(lang,"pkg_bought_prompt", name=context.user_data["nc"]["name"], month=txt), parse_mode="HTML")
-        return ADD_CLIENT_PKG_BOUGHT
-    except ValueError:
-        await update.message.reply_text(t(lang,"invalid_month"), parse_mode="HTML")
-        return ADD_CLIENT_PKG_MONTH
-
-async def add_client_pkg_bought(update, context):
-    lang = get_lang(context)
-    try:
-        bought = int(update.message.text.strip())
-        if bought < 0: raise ValueError
-        context.user_data["nc"]["pkg_bought"] = bought
-        await update.message.reply_text(
-            t(lang,"pkg_used_prompt", name=context.user_data["nc"]["name"], month=context.user_data["nc"]["pkg_month"]),
-            parse_mode="HTML")
-        return ADD_CLIENT_PKG_USED
-    except ValueError:
-        await update.message.reply_text(t(lang,"invalid_number"), parse_mode="HTML")
-        return ADD_CLIENT_PKG_BOUGHT
-
-async def add_client_pkg_used(update, context):
-    lang = get_lang(context)
-    try:
-        used = int(update.message.text.strip())
-        if used < 0: raise ValueError
-        d = context.user_data["nc"]
-        cid = db.add_client(d["name"], d["phone"], d["notes"])
-        db.upsert_package(cid, d["pkg_month"], d["pkg_bought"], used)
-        left = d["pkg_bought"] - used
-        await update.message.reply_text(
-            t(lang,"pkg_saved", name=d["name"], month=d["pkg_month"], bought=d["pkg_bought"], used=used, left=left),
-            reply_markup=clients_menu_keyboard(lang), parse_mode="HTML")
-        return ConversationHandler.END
-    except ValueError:
-        await update.message.reply_text(t(lang,"invalid_number"), parse_mode="HTML")
-        return ADD_CLIENT_PKG_USED
-
-# ── Edit client ───────────────────────────────────────────────────
 async def edit_client_start(update, context):
-    q = update.callback_query; await q.answer(); lang = get_lang(context)
+    q = update.callback_query; await q.answer()
     clients = db.get_all_clients()
     if not clients:
-        await q.edit_message_text(t(lang,"no_clients"), reply_markup=clients_menu_keyboard(lang), parse_mode="HTML")
-        return ConversationHandler.END
-    await q.edit_message_text(f"<b>✏️</b> {t(lang,'select_client')}", reply_markup=client_list_keyboard(clients,"editcl",lang), parse_mode="HTML")
+        await q.edit_message_text(NO_CLIENTS_MSG, reply_markup=clients_menu_keyboard(), parse_mode="HTML"); return ConversationHandler.END
+    await q.edit_message_text("<b>✏️ Edit Client</b>\n\nSelect a client to edit:", reply_markup=client_list_keyboard(clients, "editcl"), parse_mode="HTML")
     return EDIT_CLIENT_SELECT
 
 async def edit_client_select(update, context):
-    q = update.callback_query; await q.answer(); lang = get_lang(context)
+    q = update.callback_query; await q.answer()
     cid = int(q.data.split(":")[1]); c = db.get_client(cid)
     context.user_data["edit_cid"] = cid
-    pkg = db.get_current_package(cid)
-    bought = pkg["sessions_bought"] if pkg else 0
-    used = pkg["sessions_used"] if pkg else 0
+    txt = f"<b>✏️ Editing: {c['name']}</b>\n\n📞 Phone : {c['phone'] or '—'}\n📝 Notes : {c['notes'] or '—'}\n\nWhat would you like to edit?"
     kb = InlineKeyboardMarkup([
-        [InlineKeyboardButton("👤 " + t(lang,"field_name"), callback_data="editcl_field:name"),
-         InlineKeyboardButton("📞 " + t(lang,"field_phone"), callback_data="editcl_field:phone")],
-        [InlineKeyboardButton("📝 " + t(lang,"field_notes"), callback_data="editcl_field:notes")],
-        [InlineKeyboardButton("📦 " + t(lang,"field_sessions_bought"), callback_data="editcl_field:sessions_bought")],
-        [InlineKeyboardButton("✅ " + t(lang,"field_sessions_used"), callback_data="editcl_field:sessions_used")],
-        [InlineKeyboardButton(t(lang,"btn_cancel"), callback_data="clients_menu")],
+        [InlineKeyboardButton("👤 Name", callback_data="editcl_field:name"), InlineKeyboardButton("📞 Phone", callback_data="editcl_field:phone")],
+        [InlineKeyboardButton("📝 Notes", callback_data="editcl_field:notes")],
+        [InlineKeyboardButton("✖ Cancel", callback_data="clients_menu")],
     ])
-    await q.edit_message_text(
-        t(lang,"editing_client", name=c["name"], phone=c.get("phone") or "—", notes=c.get("notes") or "—", bought=bought, used=used),
-        reply_markup=kb, parse_mode="HTML")
+    await q.edit_message_text(txt, reply_markup=kb, parse_mode="HTML")
     return EDIT_CLIENT_FIELD
 
 async def edit_client_field(update, context):
-    q = update.callback_query; await q.answer(); lang = get_lang(context)
+    q = update.callback_query; await q.answer()
     field = q.data.split(":")[1]; context.user_data["edit_cl_field"] = field
-    if field in ("sessions_bought","sessions_used"):
-        label = t(lang, f"field_{field}")
-        await q.edit_message_text(t(lang,"enter_field_num",label=label), parse_mode="HTML")
-    else:
-        label = t(lang, f"field_{field}")
-        await q.edit_message_text(t(lang,"enter_field",label=label), parse_mode="HTML")
+    labels = {"name": "full name", "phone": "phone number", "notes": "notes"}
+    await q.edit_message_text(f"Enter the new <b>{labels[field]}</b>:\n<i>(Type <code>skip</code> to clear)</i>", parse_mode="HTML")
     return EDIT_CLIENT_VALUE
 
 async def edit_client_value(update, context):
-    lang = get_lang(context)
     cid = context.user_data["edit_cid"]; field = context.user_data["edit_cl_field"]
-    txt = update.message.text.strip(); c = db.get_client(cid)
-    if field in ("sessions_bought","sessions_used"):
-        try:
-            val = int(txt)
-            if val < 0: raise ValueError
-            pkg = db.get_current_package(cid)
-            cur_month = date.today().strftime("%m/%Y")
-            if pkg:
-                bought = val if field=="sessions_bought" else pkg["sessions_bought"]
-                used   = val if field=="sessions_used"   else pkg["sessions_used"]
-                db.upsert_package(cid, pkg["pkg_month"], bought, used)
-            else:
-                bought = val if field=="sessions_bought" else 0
-                used   = val if field=="sessions_used"   else 0
-                db.upsert_package(cid, cur_month, bought, used)
-            await update.message.reply_text(t(lang,"client_updated",name=c["name"]),
-                                             reply_markup=clients_menu_keyboard(lang), parse_mode="HTML")
-            return ConversationHandler.END
-        except ValueError:
-            await update.message.reply_text(t(lang,"invalid_number"), parse_mode="HTML")
-            return EDIT_CLIENT_VALUE
-    else:
-        value = "" if txt.lower()=="skip" else txt
-        updated = {k: c[k] for k in ("name","phone","notes")}; updated[field] = value
-        db.update_client(cid, updated["name"], updated["phone"], updated["notes"])
-        await update.message.reply_text(t(lang,"client_updated",name=updated["name"]),
-                                         reply_markup=clients_menu_keyboard(lang), parse_mode="HTML")
-        return ConversationHandler.END
+    value = "" if update.message.text.strip().lower()=="skip" else update.message.text.strip()
+    c = db.get_client(cid); updated = {k: c[k] for k in ("name","phone","notes")}; updated[field] = value
+    db.update_client(cid, updated["name"], updated["phone"], updated["notes"])
+    await update.message.reply_text(CLIENT_UPDATED_MSG.format(name=updated["name"]), reply_markup=clients_menu_keyboard(), parse_mode="HTML")
+    return ConversationHandler.END
 
-# ── Delete client ─────────────────────────────────────────────────
 async def delete_client_start(update, context):
-    q = update.callback_query; await q.answer(); lang = get_lang(context)
+    q = update.callback_query; await q.answer()
     clients = db.get_all_clients()
     if not clients:
-        await q.edit_message_text(t(lang,"no_clients"), reply_markup=clients_menu_keyboard(lang), parse_mode="HTML")
-        return ConversationHandler.END
-    await q.edit_message_text(f"<b>🗑</b> {t(lang,'select_client')}", reply_markup=client_list_keyboard(clients,"del_client",lang), parse_mode="HTML")
+        await q.edit_message_text(NO_CLIENTS_MSG, reply_markup=clients_menu_keyboard(), parse_mode="HTML"); return ConversationHandler.END
+    await q.edit_message_text("<b>🗑 Remove Client</b>\n\nSelect the client to remove:", reply_markup=client_list_keyboard(clients, "del_client"), parse_mode="HTML")
     return CONFIRM_DELETE_CLIENT
 
 async def confirm_delete_client(update, context):
-    q = update.callback_query; await q.answer(); lang = get_lang(context)
+    q = update.callback_query; await q.answer()
     cid = int(q.data.split(":")[1]); c = db.get_client(cid)
     if not c:
-        await q.edit_message_text(t(lang,"client_not_found"), reply_markup=clients_menu_keyboard(lang), parse_mode="HTML")
-        return ConversationHandler.END
+        await q.edit_message_text("Client not found.", reply_markup=clients_menu_keyboard(), parse_mode="HTML"); return ConversationHandler.END
     context.user_data["del_cid"] = cid
-    await q.edit_message_text(t(lang,"confirm_del_client",name=c["name"]),
-                               reply_markup=confirm_keyboard(lang,"confirm_del_client","cancel_del_client"), parse_mode="HTML")
+    await q.edit_message_text(CONFIRM_DELETE_CLIENT_MSG.format(name=c["name"]), reply_markup=confirm_keyboard("confirm_del_client","cancel_del_client"), parse_mode="HTML")
     return CONFIRM_DELETE_CLIENT
 
 async def execute_delete_client(update, context):
-    q = update.callback_query; await q.answer(); lang = get_lang(context)
+    q = update.callback_query; await q.answer()
     if q.data == "confirm_del_client":
         cid = context.user_data.get("del_cid"); c = db.get_client(cid); db.delete_client(cid)
-        await q.edit_message_text(t(lang,"client_deleted",name=c["name"]), reply_markup=clients_menu_keyboard(lang), parse_mode="HTML")
+        await q.edit_message_text(CLIENT_DELETED_MSG.format(name=c["name"]), reply_markup=clients_menu_keyboard(), parse_mode="HTML")
     else:
-        await q.edit_message_text(t(lang,"deletion_cancelled"), reply_markup=clients_menu_keyboard(lang), parse_mode="HTML")
+        await q.edit_message_text("Deletion cancelled.", reply_markup=clients_menu_keyboard(), parse_mode="HTML")
     return ConversationHandler.END
 
-# ── History ───────────────────────────────────────────────────────
 async def cmd_client_history(update, context):
-    q = update.callback_query; await q.answer(); lang = get_lang(context)
+    q = update.callback_query; await q.answer()
     history = db.get_history()
     if not history:
-        await q.edit_message_text(t(lang,"history_title") + "\n" + t(lang,"history_empty"),
-                                   reply_markup=clients_menu_keyboard(lang), parse_mode="HTML"); return
-    txt = t(lang,"history_title") + "─"*28 + "\n\n"; kb_rows = []
+        await q.edit_message_text("<b>🕑 Client History</b>\n\n<i>No history yet.</i>", reply_markup=clients_menu_keyboard(), parse_mode="HTML"); return
+    txt = "<b>🕑 Client History</b>\n" + "─"*28 + "\n\n"; kb_rows = []
     for h in history:
         icon = "✅" if h["action"]=="ADDED" else "🗑"
         txt += f"{icon} <b>{h['client_name']}</b>  <i>{h['action_at'][:16]}</i>\n"
         if h.get("phone"): txt += f"   📞 {h['phone']}\n"
         if h.get("notes"): txt += f"   📝 {h['notes']}\n"
         txt += "\n"
-        kb_rows.append([InlineKeyboardButton(t(lang,"del_hist_btn",name=h["client_name"],date=h["action_at"][:10]), callback_data=f"del_hist:{h['id']}")])
-    kb_rows.append([InlineKeyboardButton(t(lang,"btn_back"), callback_data="clients_menu")])
-    if len(txt) > 3800: txt = txt[:3790] + "\n<i>…</i>"
+        kb_rows.append([InlineKeyboardButton(f"🗑 Delete: {h['client_name']} ({h['action_at'][:10]})", callback_data=f"del_hist:{h['id']}")])
+    kb_rows.append([InlineKeyboardButton("↩ Back", callback_data="clients_menu")])
+    if len(txt) > 3800: txt = txt[:3790] + "\n<i>… truncated</i>"
     await q.edit_message_text(txt, reply_markup=InlineKeyboardMarkup(kb_rows), parse_mode="HTML")
 
 async def delete_history_entry(update, context):
-    q = update.callback_query; await q.answer(); lang = get_lang(context)
+    q = update.callback_query; await q.answer()
     db.delete_history_entry(int(q.data.split(":")[1]))
     history = db.get_history()
     if not history:
-        await q.edit_message_text(t(lang,"history_title") + "\n" + t(lang,"history_empty"),
-                                   reply_markup=clients_menu_keyboard(lang), parse_mode="HTML"); return
-    txt = t(lang,"history_title") + "─"*28 + "\n\n"; kb_rows = []
+        await q.edit_message_text("<b>🕑 Client History</b>\n\n<i>No history yet.</i>", reply_markup=clients_menu_keyboard(), parse_mode="HTML"); return
+    txt = "<b>🕑 Client History</b>\n" + "─"*28 + "\n\n"; kb_rows = []
     for h in history:
         icon = "✅" if h["action"]=="ADDED" else "🗑"
         txt += f"{icon} <b>{h['client_name']}</b>  <i>{h['action_at'][:16]}</i>\n"
         if h.get("phone"): txt += f"   📞 {h['phone']}\n"
         if h.get("notes"): txt += f"   📝 {h['notes']}\n"
         txt += "\n"
-        kb_rows.append([InlineKeyboardButton(t(lang,"del_hist_btn",name=h["client_name"],date=h["action_at"][:10]), callback_data=f"del_hist:{h['id']}")])
-    kb_rows.append([InlineKeyboardButton(t(lang,"btn_back"), callback_data="clients_menu")])
-    if len(txt) > 3800: txt = txt[:3790] + "\n<i>…</i>"
+        kb_rows.append([InlineKeyboardButton(f"🗑 Delete: {h['client_name']} ({h['action_at'][:10]})", callback_data=f"del_hist:{h['id']}")])
+    kb_rows.append([InlineKeyboardButton("↩ Back", callback_data="clients_menu")])
+    if len(txt) > 3800: txt = txt[:3790] + "\n<i>… truncated</i>"
     await q.edit_message_text(txt, reply_markup=InlineKeyboardMarkup(kb_rows), parse_mode="HTML")
 
-# ── Packages menu ─────────────────────────────────────────────────
-async def cmd_pkg_menu(update, context):
-    q = update.callback_query; await q.answer(); lang = get_lang(context)
-    await q.edit_message_text(t(lang,"pkg_menu"), reply_markup=pkg_menu_keyboard(lang), parse_mode="HTML")
-
-# ── Add package ───────────────────────────────────────────────────
-async def add_pkg_start(update, context):
-    q = update.callback_query; await q.answer(); lang = get_lang(context)
-    clients = db.get_all_clients()
-    if not clients:
-        await q.edit_message_text(t(lang,"no_clients"), reply_markup=pkg_menu_keyboard(lang), parse_mode="HTML")
-        return ConversationHandler.END
-    await q.edit_message_text(f"<b>📦</b> {t(lang,'select_client')}", reply_markup=client_list_keyboard(clients,"pkgcl",lang), parse_mode="HTML")
-    return PKG_SELECT_CLIENT
-
-async def pkg_select_client(update, context):
-    q = update.callback_query; await q.answer(); lang = get_lang(context)
-    cid = int(q.data.split(":")[1]); c = db.get_client(cid)
-    context.user_data["pkg_cid"] = cid; context.user_data["pkg_name"] = c["name"]
-    await q.edit_message_text(t(lang,"pkg_month_prompt"), parse_mode="HTML")
-    return PKG_ENTER_MONTH
-
-async def pkg_enter_month(update, context):
-    lang = get_lang(context); txt = update.message.text.strip()
-    try:
-        datetime.strptime(txt, "%m/%Y")
-        context.user_data["pkg_month"] = txt
-        await update.message.reply_text(
-            t(lang,"pkg_bought_prompt", name=context.user_data["pkg_name"], month=txt), parse_mode="HTML")
-        return PKG_ENTER_BOUGHT
-    except ValueError:
-        await update.message.reply_text(t(lang,"invalid_month"), parse_mode="HTML")
-        return PKG_ENTER_MONTH
-
-async def pkg_enter_bought(update, context):
-    lang = get_lang(context)
-    try:
-        bought = int(update.message.text.strip())
-        if bought < 0: raise ValueError
-        context.user_data["pkg_bought"] = bought
-        await update.message.reply_text(
-            t(lang,"pkg_used_prompt", name=context.user_data["pkg_name"], month=context.user_data["pkg_month"]),
-            parse_mode="HTML")
-        return PKG_ENTER_USED
-    except ValueError:
-        await update.message.reply_text(t(lang,"invalid_number"), parse_mode="HTML")
-        return PKG_ENTER_BOUGHT
-
-async def pkg_enter_used(update, context):
-    lang = get_lang(context)
-    try:
-        used = int(update.message.text.strip())
-        if used < 0: raise ValueError
-        cid = context.user_data["pkg_cid"]; name = context.user_data["pkg_name"]
-        month = context.user_data["pkg_month"]; bought = context.user_data["pkg_bought"]
-        db.upsert_package(cid, month, bought, used)
-        left = bought - used
-        await update.message.reply_text(
-            t(lang,"pkg_saved", name=name, month=month, bought=bought, used=used, left=left),
-            reply_markup=pkg_menu_keyboard(lang), parse_mode="HTML")
-        return ConversationHandler.END
-    except ValueError:
-        await update.message.reply_text(t(lang,"invalid_number"), parse_mode="HTML")
-        return PKG_ENTER_USED
-
-# ── View packages ─────────────────────────────────────────────────
-async def view_pkg_start(update, context):
-    q = update.callback_query; await q.answer(); lang = get_lang(context)
-    clients = db.get_all_clients()
-    if not clients:
-        await q.edit_message_text(t(lang,"no_clients"), reply_markup=pkg_menu_keyboard(lang), parse_mode="HTML"); return
-    await q.edit_message_text(f"<b>📊</b> {t(lang,'select_client')}",
-                               reply_markup=client_list_keyboard(clients,"viewpkg",lang), parse_mode="HTML")
-
-async def view_pkg_client(update, context):
-    q = update.callback_query; await q.answer(); lang = get_lang(context)
-    cid = int(q.data.split(":")[1]); c = db.get_client(cid)
-    pkgs = db.get_packages_for_client(cid)
-    if not pkgs:
-        await q.edit_message_text(t(lang,"pkg_none"), reply_markup=pkg_menu_keyboard(lang), parse_mode="HTML"); return
-    txt = f"<b>📦 {c['name']}</b>\n" + "─"*28 + "\n\n"
-    for p in pkgs:
-        left = p["sessions_bought"] - p["sessions_used"]
-        txt += f"📅 <b>{p['pkg_month']}</b>\n"
-        txt += f"   📦 {t(lang,'of')} {p['sessions_bought']}  ✅ {p['sessions_used']}  🔄 {left} {t(lang,'sessions_left')}\n"
-        txt += f"   {pkg_bar(p['sessions_used'], p['sessions_bought'])}\n\n"
-    await q.edit_message_text(txt, reply_markup=pkg_menu_keyboard(lang), parse_mode="HTML")
-
-# ── Edit used sessions ────────────────────────────────────────────
-async def edit_pkg_used_start(update, context):
-    q = update.callback_query; await q.answer(); lang = get_lang(context)
-    clients = db.get_all_clients()
-    if not clients:
-        await q.edit_message_text(t(lang,"no_clients"), reply_markup=pkg_menu_keyboard(lang), parse_mode="HTML")
-        return ConversationHandler.END
-    await q.edit_message_text(f"<b>✏️</b> {t(lang,'select_client')}", reply_markup=client_list_keyboard(clients,"editpkg",lang), parse_mode="HTML")
-    return PKG_EDIT_SELECT_CLIENT
-
-async def edit_pkg_select_client(update, context):
-    q = update.callback_query; await q.answer(); lang = get_lang(context)
-    cid = int(q.data.split(":")[1]); c = db.get_client(cid)
-    context.user_data["epkg_cid"] = cid; context.user_data["epkg_name"] = c["name"]
-    pkgs = db.get_packages_for_client(cid)
-    if not pkgs:
-        await q.edit_message_text(t(lang,"pkg_none"), reply_markup=pkg_menu_keyboard(lang), parse_mode="HTML")
-        return ConversationHandler.END
-    kb = [[InlineKeyboardButton(f"{p['pkg_month']}  ({p['sessions_used']}/{p['sessions_bought']})", callback_data=f"editpkgm:{p['pkg_month']}")] for p in pkgs]
-    kb.append([InlineKeyboardButton(t(lang,"btn_cancel"), callback_data="pkg_menu")])
-    await q.edit_message_text(f"<b>✏️ {c['name']}</b>\n\nSelectează luna:", reply_markup=InlineKeyboardMarkup(kb), parse_mode="HTML")
-    return PKG_EDIT_SELECT_MONTH
-
-async def edit_pkg_select_month(update, context):
-    q = update.callback_query; await q.answer(); lang = get_lang(context)
-    month = q.data.split(":")[1]; context.user_data["epkg_month"] = month
-    name = context.user_data["epkg_name"]
-    await q.edit_message_text(t(lang,"pkg_update_used_prompt", name=name, month=month), parse_mode="HTML")
-    return PKG_EDIT_ENTER_USED
-
-async def edit_pkg_enter_used(update, context):
-    lang = get_lang(context)
-    try:
-        used = int(update.message.text.strip())
-        if used < 0: raise ValueError
-        cid = context.user_data["epkg_cid"]; month = context.user_data["epkg_month"]
-        pkg = db.get_package(cid, month)
-        if not pkg:
-            await update.message.reply_text(t(lang,"pkg_not_found"), reply_markup=pkg_menu_keyboard(lang), parse_mode="HTML")
-            return ConversationHandler.END
-        db.upsert_package(cid, month, pkg["sessions_bought"], used)
-        left = pkg["sessions_bought"] - used
-        await update.message.reply_text(
-            t(lang,"pkg_saved", name=context.user_data["epkg_name"], month=month,
-              bought=pkg["sessions_bought"], used=used, left=left),
-            reply_markup=pkg_menu_keyboard(lang), parse_mode="HTML")
-        return ConversationHandler.END
-    except ValueError:
-        await update.message.reply_text(t(lang,"invalid_number"), parse_mode="HTML")
-        return PKG_EDIT_ENTER_USED
-
-
-# ── Schedule ──────────────────────────────────────────────────────
 async def cmd_schedule_menu(update, context):
-    q = update.callback_query; await q.answer(); lang = get_lang(context)
-    await q.edit_message_text(t(lang,"schedule_menu"), reply_markup=schedule_menu_keyboard(lang), parse_mode="HTML")
+    q = update.callback_query; await q.answer()
+    await q.edit_message_text(SCHEDULE_MENU_MSG, reply_markup=schedule_menu_keyboard(), parse_mode="HTML")
 
 async def cmd_view_today(update, context):
-    q = update.callback_query; await q.answer(); lang = get_lang(context)
+    q = update.callback_query; await q.answer()
     today = date.today()
-    await q.edit_me
+    await q.edit_message_text(fmt_daily(today, db.get_sessions_for_date(today)), reply_markup=schedule_menu_keyboard(), parse_mode="HTML")
+
+async def cmd_view_weekly(update, context):
+    q = update.callback_query; await q.answer()
+    today = date.today(); monday = today - timedelta(days=today.weekday())
+    week = {monday + timedelta(days=i): db.get_sessions_for_date(monday + timedelta(days=i)) for i in range(7)}
+    await q.edit_message_text(fmt_weekly(monday, week), reply_markup=schedule_menu_keyboard(), parse_mode="HTML")
+
+async def cmd_view_monthly(update, context):
+    q = update.callback_query; await q.answer()
+    today = date.today(); first_day = today.replace(day=1)
+    last_day = (today.replace(year=today.year+1, month=1, day=1) if today.month==12 else today.replace(month=today.month+1, day=1)) - timedelta(days=1)
+    await q.edit_message_text(fmt_monthly(today, db.get_sessions_for_range(first_day, last_day)), reply_markup=schedule_menu_keyboard(), parse_mode="HTML")
+
+async def cmd_view_all_sessions(update, context):
+    q = update.callback_query; await q.answer()
+    sessions = db.get_all_sessions(limit=50)
+    if not sessions:
+        await q.edit_message_text("<b>📋 All Sessions</b>\n\n<i>No sessions found.</i>", reply_markup=schedule_menu_keyboard(), parse_mode="HTML"); return
+    txt = "<b>📋 All Sessions</b>\n" + "─"*28 + "\n\n"
+    for s in sessions:
+        txt += f"📅 <b>{s['session_date']}</b>  🕐 {s['session_time']}\n   👤 {s['client_name']}  ⏱ {s['duration']} min\n"
+        if s.get("notes"): txt += f"   📝 {s['notes']}\n"
+        txt += "\n"
+    if len(txt) > 4000: txt = txt[:3990] + "\n<i>… showing latest 50 sessions</i>"
+    await q.edit_message_text(txt, reply_markup=schedule_menu_keyboard(), parse_mode="HTML")
+
+async def add_session_start(update, context):
+    q = update.callback_query; await q.answer()
+    clients = db.get_all_clients()
+    if not clients:
+        await q.edit_message_text(NO_CLIENTS_FOR_SESSION, reply_markup=schedule_menu_keyboard(), parse_mode="HTML"); return ConversationHandler.END
+    await q.edit_message_text("<b>📅 New Session</b>\n\nSelect a client:", reply_markup=client_list_keyboard(clients, "sess_client"), parse_mode="HTML")
+    return ADD_SESSION_CLIENT
+
+async def add_session_client(update, context):
+    q = update.callback_query; await q.answer()
+    cid = int(q.data.split(":")[1]); client = db.get_client(cid)
+    context.user_data["ns"] = {"client_id": cid, "client_name": client["name"]}
+    await q.edit_message_text(f"<b>📅 New Session — {client['name']}</b>\n\nEnter the date:\n<code>Format: DD/MM/YYYY  (e.g. 25/06/2025)</code>", parse_mode="HTML")
+    return ADD_SESSION_DATE
+
+async def add_session_date(update, context):
+    try:
+        d = datetime.strptime(update.message.text.strip(), "%d/%m/%Y").date()
+        if d < date.today():
+            await update.message.reply_text("⚠️ Date is in the past. Enter a future date (DD/MM/YYYY):"); return ADD_SESSION_DATE
+        context.user_data["ns"]["date"] = d
+        await update.message.reply_text(f"<b>📅 Session — {context.user_data['ns']['client_name']}</b>\n\nEnter the start time:\n<code>Format: HH:MM  (e.g. 09:30)</code>", parse_mode="HTML")
+        return ADD_SESSION_TIME
+    except ValueError:
+        await update.message.reply_text("⚠️ Invalid format. Use DD/MM/YYYY:"); return ADD_SESSION_DATE
+
+async def add_session_time(update, context):
+    try:
+        t = datetime.strptime(update.message.text.strip(), "%H:%M").time()
+        context.user_data["ns"]["time"] = t
+        await update.message.reply_text("Session duration in minutes:\n<code>e.g. 60</code>", parse_mode="HTML")
+        return ADD_SESSION_DURATION
+    except ValueError:
+        await update.message.reply_text("⚠️ Invalid format. Use HH:MM (e.g. 09:30):"); return ADD_SESSION_TIME
+
+async def add_session_duration(update, context):
+    try:
+        dur = int(update.message.text.strip())
+        if not (1 <= dur <= 300): raise ValueError
+        context.user_data["ns"]["duration"] = dur
+        await update.message.reply_text("Session notes (type <code>skip</code> to leave blank):", parse_mode="HTML")
+        return ADD_SESSION_NOTES
+    except ValueError:
+        await update.message.reply_text("⚠️ Enter a valid number of minutes (e.g. 60):"); return ADD_SESSION_DURATION
+
+async def add_session_notes(update, context):
+    txt = update.message.text.strip(); d = context.user_data["ns"]
+    d["notes"] = "" if txt.lower()=="skip" else txt
+    db.add_session(d["client_id"], d["date"], d["time"], d["duration"], d["notes"])
+    await update.message.reply_text(SESSION_ADDED_MSG.format(name=d["client_name"], date=d["date"].strftime("%A, %d %B %Y"), time=d["time"].strftime("%H:%M"), duration=d["duration"]), reply_markup=schedule_menu_keyboard(), parse_mode="HTML")
+    return ConversationHandler.END
+
+async def edit_session_start(update, context):
+    q = update.callback_query; await q.answer()
+    sessions = db.get_upcoming_sessions(limit=20)
+    if not sessions:
+        await q.edit_message_text("No upcoming sessions to edit.", reply_markup=schedule_menu_keyboard(), parse_mode="HTML"); return ConversationHandler.END
+    kb = [[InlineKeyboardButton(f"{s['session_date']}  {s['session_time']} — {s['client_name']}", callback_data=f"editsess:{s['id']}")] for s in sessions]
+    kb.append([InlineKeyboardButton("✖ Cancel", callback_data="schedule_menu")])
+    await q.edit_message_text("<b>✏️ Edit Session</b>\n\nSelect a session to edit:", reply_markup=InlineKeyboardMarkup(kb), parse_mode="HTML")
+    return EDIT_SESSION_SELECT
+
+async def edit_session_select(update, context):
+    q = update.callback_query; await q.answer()
+    sid = int(q.data.split(":")[1]); s = db.get_session(sid)
+    context.user_data["edit_sid"] = sid
+    txt = f"<b>✏️ Editing Session</b>\n\n👤 {s['client_name']}\n📅 {s['session_date']}  🕐 {s['session_time']}\n⏱ {s['duration']} min\n📝 {s['notes'] or '—'}\n\nWhat would you like to change?"
+    kb = InlineKeyboardMarkup([
+        [InlineKeyboardButton("📅 Date", callback_data="editsess_field:date"), InlineKeyboardButton("🕐 Time", callback_data="editsess_field:time")],
+        [InlineKeyboardButton("⏱ Duration", callback_data="editsess_field:duration"), InlineKeyboardButton("📝 Notes", callback_data="editsess_field:notes")],
+        [InlineKeyboardButton("✖ Cancel", callback_data="schedule_menu")],
+    ])
+    await q.edit_message_text(txt, reply_markup=kb, parse_mode="HTML")
+    return EDIT_SESSION_FIELD
+
+async def edit_session_field(update, context):
+    q = update.callback_query; await q.answer()
+    field = q.data.split(":")[1]; context.user_data["edit_sess_field"] = field
+    prompts = {"date": "Enter new date:\n<code>Format: DD/MM/YYYY</code>", "time": "Enter new time:\n<code>Format: HH:MM</code>",
+               "duration": "Enter new duration in minutes:\n<code>e.g. 60</code>", "notes": "Enter new notes:\n<i>(Type <code>skip</code> to clear)</i>"}
+    await q.edit_message_text(prompts[field], parse_mode="HTML")
+    return EDIT_SESSION_VALUE
+
+async def edit_session_value(update, context):
+    sid = context.user_data["edit_sid"]; field = context.user_data["edit_sess_field"]; txt = update.message.text.strip()
+    s = db.get_session(sid)
+    try:
+        new_date = datetime.strptime(s["session_date"], "%Y-%m-%d").date()
+        new_time = datetime.strptime(s["session_time"], "%H:%M").time()
+        new_duration = s["duration"]; new_notes = s["notes"] or ""
+        if field == "date":
+            new_date = datetime.strptime(txt, "%d/%m/%Y").date()
+            if new_date < date.today():
+                await update.message.reply_text("⚠️ Date is in the past. Try again (DD/MM/YYYY):"); return EDIT_SESSION_VALUE
+        elif field == "time": new_time = datetime.strptime(txt, "%H:%M").time()
+        elif field == "duration":
+            new_duration = int(txt)
+            if not (1 <= new_duration <= 300): raise ValueError
+        elif field == "notes": new_notes = "" if txt.lower()=="skip" else txt
+        db.update_session(sid, new_date, new_time, new_duration, new_notes)
+        await update.message.reply_text(SESSION_UPDATED_MSG.format(name=s["client_name"]), reply_markup=schedule_menu_keyboard(), parse_mode="HTML")
+        return ConversationHandler.END
+    except ValueError:
+        hints = {"date":"DD/MM/YYYY","time":"HH:MM","duration":"a number 1-300","notes":"any text"}
+        await update.message.reply_text(f"⚠️ Invalid input. Expected: <code>{hints[field]}</code>", parse_mode="HTML")
+        return EDIT_SESSION_VALUE
+
+async def delete_session_start(update, context):
+    q = update.callback_query; await q.answer()
+    sessions = db.get_upcoming_sessions(limit=20)
+    if not sessions:
+        await q.edit_message_text("No upcoming sessions found.", reply_markup=schedule_menu_keyboard(), parse_mode="HTML"); return ConversationHandler.END
+    kb = [[InlineKeyboardButton(f"{s['session_date']}  {s['session_time']} — {s['client_name']}", callback_data=f"del_sess:{s['id']}")] for s in sessions]
+    kb.append([InlineKeyboardButton("↩ Back", callback_data="schedule_menu")])
+    await q.edit_message_text("<b>🗑 Cancel Session</b>\n\nSelect the session to remove:", reply_markup=InlineKeyboardMarkup(kb), parse_mode="HTML")
+    return CONFIRM_DELETE_SESSION
+
+async def confirm_delete_session(update, context):
+    q = update.callback_query; await q.answer()
+    sid = int(q.data.split(":")[1]); s = db.get_session(sid)
+    context.user_data["del_sid"] = sid
+    await q.edit_message_text(CONFIRM_DELETE_SESSION_MSG.format(name=s["client_name"], date=s["session_date"], time=s["session_time"]), reply_markup=confirm_keyboard("confirm_del_sess","cancel_del_sess"), parse_mode="HTML")
+    return CONFIRM_DELETE_SESSION
+
+async def execute_delete_session(update, context):
+    q = update.callback_query; await q.answer()
+    if q.data == "confirm_del_sess":
+        db.delete_session(context.user_data.get("del_sid"))
+        await q.edit_message_text("✅ Session removed from your schedule.", reply_markup=schedule_menu_keyboard(), parse_mode="HTML")
+    else:
+        await q.edit_message_text("Deletion cancelled.", reply_markup=schedule_menu_keyboard(), parse_mode="HTML")
+    return ConversationHandler.END
+
+async def cmd_workout_menu(update, context):
+    q = update.callback_query; await q.answer()
+    await q.edit_message_text(WORKOUT_MENU_MSG, reply_markup=workout_menu_keyboard(), parse_mode="HTML")
+
+async def cmd_list_plans(update, context):
+    q = update.callback_query; await q.answer()
+    clients = db.get_all_clients(); txt, any_plan = "<b>📋 Workout Plans</b>\n" + "─"*28 + "\n\n", False
+    for c in clients:
+        plans = db.get_plans_for_client(c["id"])
+        if plans:
+            any_plan = True; txt += f"<b>👤 {c['name']}</b>\n"
+            for p in plans: txt += f"  • {p['title']}  <i>({p['created_at']})</i>\n"
+            txt += "\n"
+    if not any_plan: txt += "<i>No workout plans yet.</i>"
+    await q.edit_message_text(txt, reply_markup=workout_menu_keyboard(), parse_mode="HTML")
+
+async def add_plan_start(update, context):
+    q = update.callback_query; await q.answer()
+    clients = db.get_all_clients()
+    if not clients:
+        await q.edit_message_text(NO_CLIENTS_MSG, reply_markup=workout_menu_keyboard(), parse_mode="HTML"); return ConversationHandler.END
+    await q.edit_message_text("<b>📋 New Workout Plan</b>\n\nSelect a client:", reply_markup=client_list_keyboard(clients, "plan_client"), parse_mode="HTML")
+    return ADD_PLAN_CLIENT
+
+async def add_plan_client(update, context):
+    q = update.callback_query; await q.answer()
+    cid = int(q.data.split(":")[1]); client = db.get_client(cid)
+    context.user_data["np"] = {"client_id": cid, "client_name": client["name"]}
+    await q.edit_message_text(f"<b>📋 Plan for {client['name']}</b>\n\nEnter the plan title:\n<i>e.g. Week 1 — Strength Foundation</i>", parse_mode="HTML")
+    return ADD_PLAN_TITLE
+
+async def add_plan_title(update, context):
+    context.user_data["np"]["title"] = update.message.text.strip()
+    await update.message.reply_text("<b>📋 Workout Plan Content</b>\n\nEnter the full workout plan:\n\n<code>Day 1 — Push\nBench Press 4×8\nShoulder Press 3×10\n\nDay 2 — Pull\nDeadlift 4×5\nRows 3×12</code>", parse_mode="HTML")
+    return ADD_PLAN_CONTENT
+
+async def add_plan_content(update, context):
+    d = context.user_data["np"]; d["content"] = update.message.text.strip()
+    db.add_plan(d["client_id"], d["title"], d["content"])
+    await update.message.reply_text(PLAN_ADDED_MSG.format(name=d["client_name"], title=d["title"]), reply_markup=workout_menu_keyboard(), parse_mode="HTML")
+    return ConversationHandler.END
+
+async def cmd_view_client_plan(update, context):
+    q = update.callback_query; await q.answer()
+    clients = [c for c in db.get_all_clients() if db.get_plans_for_client(c["id"])]
+    if not clients:
+        await q.edit_message_text("No workout plans found.", reply_markup=workout_menu_keyboard(), parse_mode="HTML"); return
+    await q.edit_message_text("<b>📋 View Plan</b>\n\nSelect a client:", reply_markup=client_list_keyboard(clients, "view_plan"), parse_mode="HTML")
+
+async def cmd_show_client_plans(update, context):
+    q = update.callback_query; await q.answer()
+    cid = int(q.data.split(":")[1]); client = db.get_client(cid); plans = db.get_plans_for_client(cid)
+    if not plans:
+        await q.edit_message_text(f"No plans for {client['name']}.", reply_markup=workout_menu_keyboard(), parse_mode="HTML"); return
+    txt = f"<b>📋 {client['name']} — Workout Plans</b>\n" + "─"*28 + "\n\n"
+    for p in plans: txt += f"<b>{p['title']}</b>  <i>{p['created_at']}</i>\n{p['content']}\n\n" + "─"*20 + "\n\n"
+    if len(txt) > 4000: txt = txt[:3990] + "\n<i>… truncated</i>"
+    await q.edit_message_text(txt, reply_markup=workout_menu_keyboard(), parse_mode="HTML")
+
+async def cancel(update, context):
+    await update.message.reply_text("Operation cancelled.", reply_markup=main_menu_keyboard(), parse_mode="HTML")
+    return ConversationHandler.END
+
+async def unknown_callback(update, context):
+    await update.callback_query.answer("Unknown action.", show_alert=False)
+
+
+def main():
+    app = Application.builder().token(BOT_TOKEN).build()
+
+    add_client_conv = ConversationHandler(
+        entry_points=[CallbackQueryHandler(add_client_start, pattern="^add_client$")],
+        states={ADD_CLIENT_NAME:[MessageHandler(filters.TEXT&~filters.COMMAND,add_client_name)],ADD_CLIENT_PHONE:[MessageHandler(filters.TEXT&~filters.COMMAND,add_client_phone)],ADD_CLIENT_NOTES:[MessageHandler(filters.TEXT&~filters.COMMAND,add_client_notes)]},
+        fallbacks=[CommandHandler("cancel",cancel)])
+    edit_client_conv = ConversationHandler(
+        entry_points=[CallbackQueryHandler(edit_client_start, pattern="^edit_client_start$")],
+        states={EDIT_CLIENT_SELECT:[CallbackQueryHandler(edit_client_select,pattern="^editcl:")],EDIT_CLIENT_FIELD:[CallbackQueryHandler(edit_client_field,pattern="^editcl_field:")],EDIT_CLIENT_VALUE:[MessageHandler(filters.TEXT&~filters.COMMAND,edit_client_value)]},
+        fallbacks=[CommandHandler("cancel",cancel)])
+    del_client_conv = ConversationHandler(
+        entry_points=[CallbackQueryHandler(delete_client_start, pattern="^delete_client$")],
+        states={CONFIRM_DELETE_CLIENT:[CallbackQueryHandler(confirm_delete_client,pattern="^del_client:"),CallbackQueryHandler(execute_delete_client,pattern="^(confirm|cancel)_del_client$")]},
+        fallbacks=[CommandHandler("cancel",cancel)])
+    add_session_conv = ConversationHandler(
+        entry_points=[CallbackQueryHandler(add_session_start, pattern="^add_session$")],
+        states={ADD_SESSION_CLIENT:[CallbackQueryHandler(add_session_client,pattern="^sess_client:")],ADD_SESSION_DATE:[MessageHandler(filters.TEXT&~filters.COMMAND,add_session_date)],ADD_SESSION_TIME:[MessageHandler(filters.TEXT&~filters.COMMAND,add_session_time)],ADD_SESSION_DURATION:[MessageHandler(filters.TEXT&~filters.COMMAND,add_session_duration)],ADD_SESSION_NOTES:[MessageHandler(filters.TEXT&~filters.COMMAND,add_session_notes)]},
+        fallbacks=[CommandHandler("cancel",cancel)])
+    edit_session_conv = ConversationHandler(
+        entry_points=[CallbackQueryHandler(edit_session_start, pattern="^edit_session_start$")],
+        states={EDIT_SESSION_SELECT:[CallbackQueryHandler(edit_session_select,pattern="^editsess:")],EDIT_SESSION_FIELD:[CallbackQueryHandler(edit_session_field,pattern="^editsess_field:")],EDIT_SESSION_VALUE:[MessageHandler(filters.TEXT&~filters.COMMAND,edit_session_value)]},
+        fallbacks=[CommandHandler("cancel",cancel)])
+    del_session_conv = ConversationHandler(
+        entry_points=[CallbackQueryHandler(delete_session_start, pattern="^delete_session$")],
+        states={CONFIRM_DELETE_SESSION:[CallbackQueryHandler(confirm_delete_session,pattern="^del_sess:"),CallbackQueryHandler(execute_delete_session,pattern="^(confirm|cancel)_del_sess$")]},
+        fallbacks=[CommandHandler("cancel",cancel)])
+    add_plan_conv = ConversationHandler(
+        entry_points=[CallbackQueryHandler(add_plan_start, pattern="^add_plan$")],
+        states={ADD_PLAN_CLIENT:[CallbackQueryHandler(add_plan_client,pattern="^plan_client:")],ADD_PLAN_TITLE:[MessageHandler(filters.TEXT&~filters.COMMAND,add_plan_title)],ADD_PLAN_CONTENT:[MessageHandler(filters.TEXT&~filters.COMMAND,add_plan_content)]},
+        fallbacks=[CommandHandler("cancel",cancel)])
+
+    app.add_handler(CommandHandler("start", start))
+    for conv in [add_client_conv, edit_client_conv, del_client_conv, add_session_conv, edit_session_conv, del_session_conv, add_plan_conv]:
+        app.add_handler(conv)
+
+    app.add_handler(CallbackQueryHandler(cmd_main_menu,         pattern="^main_menu$"))
+    app.add_handler(CallbackQueryHandler(cmd_clients_menu,      pattern="^clients_menu$"))
+    app.add_handler(CallbackQueryHandler(cmd_list_clients,      pattern="^list_clients$"))
+    app.add_handler(CallbackQueryHandler(cmd_client_history,    pattern="^client_history$"))
+    app.add_handler(CallbackQueryHandler(delete_history_entry,  pattern="^del_hist:"))
+    app.add_handler(CallbackQueryHandler(cmd_schedule_menu,     pattern="^schedule_menu$"))
+    app.add_handler(CallbackQueryHandler(cmd_view_today,        pattern="^view_today$"))
+    app.add_handler(CallbackQueryHandler(cmd_view_weekly,       pattern="^view_weekly$"))
+    app.add_handler(CallbackQueryHandler(cmd_view_monthly,      pattern="^view_monthly$"))
+    app.add_handler(CallbackQueryHandler(cmd_view_all_sessions, pattern="^view_all_sessions$"))
+    app.add_handler(CallbackQueryHandler(cmd_workout_menu,      pattern="^workout_menu$"))
+    app.add_handler(CallbackQueryHandler(cmd_list_plans,        pattern="^list_plans$"))
+    app.add_handler(CallbackQueryHandler(cmd_view_client_plan,  pattern="^view_client_plan$"))
+    app.add_handler(CallbackQueryHandler(cmd_show_client_plans, pattern="^view_plan:"))
+    app.add_handler(CallbackQueryHandler(unknown_callback))
+
+    setup_scheduler(app, db)
+    logger.info("🏋️  FitCoach Bot v2 is running…")
+    app.run_polling(allowed_updates=Update.ALL_TYPES)
+
+if __name__ == "__main__":
+    main()
