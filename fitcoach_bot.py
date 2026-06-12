@@ -1713,7 +1713,7 @@ async def body_del_select_entry(update, context):
         d_fmt = e["meas_date"]
     await q.edit_message_text(
         t(lang,"body_confirm_delete", date=d_fmt, name=name),
-        reply_markup=confirm_keyboard(lang,"body_del_confirm","body_menu"), parse_mode="HTML")
+        reply_markup=confirm_keyboard(lang,"body_del_confirm","body_del_cancel"), parse_mode="HTML")
     return BODY_DEL_CONFIRM
 
 async def body_del_confirm(update, context):
@@ -1724,6 +1724,8 @@ async def body_del_confirm(update, context):
     else:
         await q.edit_message_text(t(lang,"deletion_cancelled"), reply_markup=body_menu_keyboard(lang), parse_mode="HTML")
     return ConversationHandler.END
+
+
 
 async def cancel(update, context):
     lang = get_lang(context)
@@ -1758,6 +1760,12 @@ def main():
         q = update.callback_query; await q.answer()
         lang = get_lang(context)
         await q.edit_message_text(t(lang,"main_menu"), reply_markup=main_menu_keyboard(lang), parse_mode="HTML")
+        return ConversationHandler.END
+
+    async def cancel_to_body(update, context):
+        q = update.callback_query; await q.answer()
+        lang = get_lang(context)
+        await q.edit_message_text(t(lang,"body_menu"), reply_markup=body_menu_keyboard(lang), parse_mode="HTML")
         return ConversationHandler.END
 
     add_client_conv = ConversationHandler(
@@ -1854,8 +1862,10 @@ def main():
             BODY_HIPS:  [MessageHandler(filters.TEXT&~filters.COMMAND, body_add_hips)],
             BODY_LEG:   [MessageHandler(filters.TEXT&~filters.COMMAND, body_add_leg)],
             BODY_ARM:   [MessageHandler(filters.TEXT&~filters.COMMAND, body_add_arm)],
-        }, fallbacks=[CommandHandler("cancel",cancel),
-                      CallbackQueryHandler(lambda u,c: (u.callback_query.answer(), ConversationHandler.END)[1], pattern="^body_menu$")])
+        }, fallbacks=[
+            CommandHandler("cancel", cancel),
+            CallbackQueryHandler(cancel_to_body, pattern="^body_menu$"),
+        ])
 
     body_edit_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(body_edit_start, pattern="^body_edit_start$")],
@@ -1864,17 +1874,21 @@ def main():
             BODY_EDIT_SELECT_ENTRY: [CallbackQueryHandler(body_edit_select_entry,  pattern="^bodyeditentry:")],
             BODY_EDIT_FIELD:        [CallbackQueryHandler(body_edit_field,          pattern="^bodyeditfield:")],
             BODY_EDIT_VALUE:        [MessageHandler(filters.TEXT&~filters.COMMAND,  body_edit_value)],
-        }, fallbacks=[CommandHandler("cancel",cancel),
-                      CallbackQueryHandler(lambda u,c: (u.callback_query.answer(), ConversationHandler.END)[1], pattern="^body_menu$")])
+        }, fallbacks=[
+            CommandHandler("cancel", cancel),
+            CallbackQueryHandler(cancel_to_body, pattern="^body_menu$"),
+        ])
 
     body_del_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(body_del_start, pattern="^body_del_start$")],
         states={
             BODY_DEL_SELECT_CLIENT:[CallbackQueryHandler(body_del_select_client, pattern="^bodydelcl:")],
             BODY_DEL_SELECT_ENTRY: [CallbackQueryHandler(body_del_select_entry,  pattern="^bodydelentry:")],
-            BODY_DEL_CONFIRM:      [CallbackQueryHandler(body_del_confirm,        pattern="^(body_del_confirm|body_menu)$")],
-        }, fallbacks=[CommandHandler("cancel",cancel),
-                      CallbackQueryHandler(lambda u,c: (u.callback_query.answer(), ConversationHandler.END)[1], pattern="^body_menu$")])
+            BODY_DEL_CONFIRM:      [CallbackQueryHandler(body_del_confirm, pattern="^(body_del_confirm|body_del_cancel)$")],
+        }, fallbacks=[
+            CommandHandler("cancel", cancel),
+            CallbackQueryHandler(cancel_to_body, pattern="^body_menu$"),
+        ])
 
     add_pkg_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(add_pkg_start, pattern="^add_pkg_start$")],
