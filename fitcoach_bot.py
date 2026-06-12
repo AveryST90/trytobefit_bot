@@ -1,8 +1,9 @@
 """
 ╔══════════════════════════════════════════════════════════════════╗
-║                     FITCOACH BOT  v3                            ║
-║  NEW: Session packages per month, sessions used tracking,       ║
-║       bilingual RO/EN, new date format, language picker         ║
+║                     FITCOACH BOT  v4                            ║
+║  NEW: Body measurements per client — weight, chest, waist,     ║
+║       hips, legs, arms — multiple entries, sorted by date,     ║
+║       edit & delete individual entries, full history view       ║
 ╚══════════════════════════════════════════════════════════════════╝
 """
 
@@ -140,6 +141,37 @@ T = {
         "pkg_update_used_prompt": "Enter the new number of <b>sessions used</b> for {name} in {month}:",
         "pkg_not_found": "No package found for this month.",
         "language_prompt": "🌍 <b>Choose your language / Alege limba</b>",
+        # ── Body measurements ──
+        "body_menu": "📏 <b>Body Measurements</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nTrack body measurements for each client.",
+        "btn_body": "📏  Body Measurements",
+        "btn_add_body": "➕  Add Measurement",
+        "btn_view_body": "📊  View History",
+        "btn_edit_body": "✏️  Edit Entry",
+        "btn_del_body": "🗑  Delete Entry",
+        "body_select_client": "Select a client to manage measurements:",
+        "body_date_prompt": "Enter the measurement date:\n<code>Format: DD/MM/YYYY</code>",
+        "body_weight_prompt": "⚖️ Weight (kg):\n<i>(e.g. 75.5 — type <code>skip</code> to leave blank)</i>",
+        "body_chest_prompt": "📏 Chest circumference (cm):\n<i>(type <code>skip</code> to leave blank)</i>",
+        "body_waist_prompt": "📏 Waist circumference (cm):\n<i>(type <code>skip</code> to leave blank)</i>",
+        "body_hips_prompt": "📏 Hips circumference (cm):\n<i>(type <code>skip</code> to leave blank)</i>",
+        "body_leg_prompt": "📏 Leg circumference (cm):\n<i>(type <code>skip</code> to leave blank)</i>",
+        "body_arm_prompt": "📏 Arm circumference (cm):\n<i>(type <code>skip</code> to leave blank)</i>",
+        "body_saved": "✅ Measurements saved for <b>{name}</b> on {date}",
+        "body_none": "No measurements recorded yet for this client.",
+        "body_updated": "✅ Measurement entry updated.",
+        "body_deleted": "✅ Measurement entry deleted.",
+        "body_select_entry": "Select an entry to {action}:",
+        "body_confirm_delete": "⚠️ Delete the measurement entry from <b>{date}</b> for <b>{name}</b>?\n\nThis cannot be undone.",
+        "invalid_decimal": "⚠️ Enter a valid number (e.g. 75.5) or <code>skip</code>:",
+        "body_edit_field_prompt": "What would you like to edit?",
+        "lbl_weight": "⚖️ Weight",
+        "lbl_chest": "📏 Chest",
+        "lbl_waist": "📏 Waist",
+        "lbl_hips": "📏 Hips",
+        "lbl_leg": "📏 Leg",
+        "lbl_arm": "📏 Arm",
+        "unit_kg": "kg",
+        "unit_cm": "cm",
     },
     "RO": {
         "welcome": "💪 <b>FitCoach Bot</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nBine ai revenit, <b>{name}</b>.\n\nGestionează clienții, programează antrenamentele, atribuie planuri de exerciții și primește memento-uri — totul într-un singur loc.\n\nSelectează o opțiune pentru a începe.",
@@ -245,6 +277,37 @@ T = {
         "pkg_update_used_prompt": "Introdu noul număr de <b>ședințe folosite</b> pentru {name} în {month}:",
         "pkg_not_found": "Nu s-a găsit niciun pachet pentru această lună.",
         "language_prompt": "🌍 <b>Choose your language / Alege limba</b>",
+        # ── Parametri corporali ──
+        "body_menu": "📏 <b>Parametri Corporali</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nMonitorizează parametrii corporali pentru fiecare client.",
+        "btn_body": "📏  Parametri Corporali",
+        "btn_add_body": "➕  Adaugă Măsurătoare",
+        "btn_view_body": "📊  Vezi Istoric",
+        "btn_edit_body": "✏️  Editează Intrare",
+        "btn_del_body": "🗑  Șterge Intrare",
+        "body_select_client": "Selectează un client pentru parametri corporali:",
+        "body_date_prompt": "Introdu data măsurătorii:\n<code>Format: ZZ/LL/AAAA</code>",
+        "body_weight_prompt": "⚖️ Greutate (kg):\n<i>(ex: 75.5 — scrie <code>skip</code> pentru a sări)</i>",
+        "body_chest_prompt": "📏 Diametru Piept (cm):\n<i>(scrie <code>skip</code> pentru a sări)</i>",
+        "body_waist_prompt": "📏 Diametru Talie (cm):\n<i>(scrie <code>skip</code> pentru a sări)</i>",
+        "body_hips_prompt": "📏 Diametru Bazin (cm):\n<i>(scrie <code>skip</code> pentru a sări)</i>",
+        "body_leg_prompt": "📏 Diametru Picior (cm):\n<i>(scrie <code>skip</code> pentru a sări)</i>",
+        "body_arm_prompt": "📏 Diametru Mâini (cm):\n<i>(scrie <code>skip</code> pentru a sări)</i>",
+        "body_saved": "✅ Parametrii salvați pentru <b>{name}</b> pe data de {date}",
+        "body_none": "Nu există măsurători înregistrate pentru acest client.",
+        "body_updated": "✅ Intrarea a fost actualizată.",
+        "body_deleted": "✅ Intrarea a fost ștearsă.",
+        "body_select_entry": "Selectează o intrare pentru a o {action}:",
+        "body_confirm_delete": "⚠️ Ștergi măsurătoarea din <b>{date}</b> pentru <b>{name}</b>?\n\nAceastă acțiune nu poate fi anulată.",
+        "invalid_decimal": "⚠️ Introdu un număr valid (ex: 75.5) sau <code>skip</code>:",
+        "body_edit_field_prompt": "Ce dorești să editezi?",
+        "lbl_weight": "⚖️ Greutate",
+        "lbl_chest": "📏 Piept",
+        "lbl_waist": "📏 Talie",
+        "lbl_hips": "📏 Bazin",
+        "lbl_leg": "📏 Picior",
+        "lbl_arm": "📏 Mâini",
+        "unit_kg": "kg",
+        "unit_cm": "cm",
     }
 }
 
@@ -319,6 +382,18 @@ class Database:
                 created_at TEXT DEFAULT (date('now'))
             );
             CREATE TABLE IF NOT EXISTS trainer_chat (id INTEGER PRIMARY KEY, chat_id INTEGER NOT NULL);
+            CREATE TABLE IF NOT EXISTS body_measurements (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                client_id   INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+                meas_date   TEXT    NOT NULL,
+                weight      REAL,
+                chest       REAL,
+                waist       REAL,
+                hips        REAL,
+                leg         REAL,
+                arm         REAL,
+                created_at  TEXT DEFAULT (datetime('now'))
+            );
         """)
         # migrate existing clients table if columns missing
         try:
@@ -483,6 +558,35 @@ class Database:
         rows = self.conn.execute("SELECT * FROM workout_plans WHERE client_id=? ORDER BY created_at DESC", (client_id,)).fetchall()
         return [dict(r) for r in rows]
 
+    # ── Body Measurements ─────────────────────────────────────────
+    def add_body_measurement(self, client_id, meas_date, weight, chest, waist, hips, leg, arm):
+        cur = self.conn.cursor()
+        cur.execute(
+            "INSERT INTO body_measurements (client_id, meas_date, weight, chest, waist, hips, leg, arm) VALUES (?,?,?,?,?,?,?,?)",
+            (client_id, meas_date, weight, chest, waist, hips, leg, arm))
+        self.conn.commit()
+        return cur.lastrowid
+
+    def get_body_measurements(self, client_id):
+        rows = self.conn.execute(
+            "SELECT * FROM body_measurements WHERE client_id=? ORDER BY meas_date ASC, created_at ASC",
+            (client_id,)).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_body_measurement(self, mid):
+        row = self.conn.execute("SELECT * FROM body_measurements WHERE id=?", (mid,)).fetchone()
+        return dict(row) if row else None
+
+    def update_body_measurement(self, mid, meas_date, weight, chest, waist, hips, leg, arm):
+        self.conn.execute(
+            "UPDATE body_measurements SET meas_date=?, weight=?, chest=?, waist=?, hips=?, leg=?, arm=? WHERE id=?",
+            (meas_date, weight, chest, waist, hips, leg, arm, mid))
+        self.conn.commit()
+
+    def delete_body_measurement(self, mid):
+        self.conn.execute("DELETE FROM body_measurements WHERE id=?", (mid,))
+        self.conn.commit()
+
 
 # ═══════════════════════════════════════════════════════════════════
 #  KEYBOARDS
@@ -503,6 +607,7 @@ def clients_menu_keyboard(lang):
          InlineKeyboardButton(t(lang,"btn_view_all"), callback_data="list_clients")],
         [InlineKeyboardButton(t(lang,"btn_history"), callback_data="client_history"),
          InlineKeyboardButton(t(lang,"btn_pkg"), callback_data="pkg_menu")],
+        [InlineKeyboardButton(t(lang,"btn_body"), callback_data="body_menu")],
         [InlineKeyboardButton(t(lang,"btn_main_menu"), callback_data="main_menu")],
     ])
 
@@ -524,6 +629,15 @@ def workout_menu_keyboard(lang):
          InlineKeyboardButton(t(lang,"btn_all_plans"), callback_data="list_plans")],
         [InlineKeyboardButton(t(lang,"btn_plans_by"), callback_data="view_client_plan")],
         [InlineKeyboardButton(t(lang,"btn_main_menu"), callback_data="main_menu")],
+    ])
+
+def body_menu_keyboard(lang):
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(t(lang,"btn_add_body"), callback_data="body_add_start"),
+         InlineKeyboardButton(t(lang,"btn_view_body"), callback_data="body_view_start")],
+        [InlineKeyboardButton(t(lang,"btn_edit_body"), callback_data="body_edit_start"),
+         InlineKeyboardButton(t(lang,"btn_del_body"), callback_data="body_del_start")],
+        [InlineKeyboardButton(t(lang,"btn_back"), callback_data="clients_menu")],
     ])
 
 def pkg_menu_keyboard(lang):
@@ -585,7 +699,10 @@ def setup_scheduler(app, db):
  ADD_PLAN_CLIENT, ADD_PLAN_TITLE, ADD_PLAN_CONTENT,
  CONFIRM_DELETE_CLIENT, CONFIRM_DELETE_SESSION,
  PKG_SELECT_CLIENT, PKG_ENTER_MONTH, PKG_ENTER_BOUGHT, PKG_ENTER_USED,
- PKG_EDIT_SELECT_CLIENT, PKG_EDIT_SELECT_MONTH, PKG_EDIT_ENTER_USED) = range(29)
+ PKG_EDIT_SELECT_CLIENT, PKG_EDIT_SELECT_MONTH, PKG_EDIT_ENTER_USED,
+ BODY_SELECT_CLIENT, BODY_DATE, BODY_WEIGHT, BODY_CHEST, BODY_WAIST, BODY_HIPS, BODY_LEG, BODY_ARM,
+ BODY_EDIT_SELECT_CLIENT, BODY_EDIT_SELECT_ENTRY, BODY_EDIT_FIELD, BODY_EDIT_VALUE,
+ BODY_DEL_SELECT_CLIENT, BODY_DEL_SELECT_ENTRY, BODY_DEL_CONFIRM) = range(45)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -1306,6 +1423,308 @@ async def cmd_show_client_plans(update, context):
     if len(txt) > 4000: txt = txt[:3990] + "\n<i>…</i>"
     await q.edit_message_text(txt, reply_markup=workout_menu_keyboard(lang), parse_mode="HTML")
 
+# ══════════════════════════════════════════════════════════════════
+#  BODY MEASUREMENTS
+# ══════════════════════════════════════════════════════════════════
+
+def _fmt_body_entry(entry, lang):
+    """Format a single body measurement entry."""
+    d = entry.get("meas_date","")
+    try:
+        d_obj = datetime.strptime(d, "%Y-%m-%d").date()
+        d_fmt = fmt_date(d_obj, None, lang)
+    except:
+        d_fmt = d
+    lines = [f"📅 <b>{d_fmt}</b>"]
+    if entry.get("weight") is not None:  lines.append(f"  {t(lang,'lbl_weight')}: {entry['weight']} {t(lang,'unit_kg')}")
+    if entry.get("chest")  is not None:  lines.append(f"  {t(lang,'lbl_chest')}: {entry['chest']} {t(lang,'unit_cm')}")
+    if entry.get("waist")  is not None:  lines.append(f"  {t(lang,'lbl_waist')}: {entry['waist']} {t(lang,'unit_cm')}")
+    if entry.get("hips")   is not None:  lines.append(f"  {t(lang,'lbl_hips')}: {entry['hips']} {t(lang,'unit_cm')}")
+    if entry.get("leg")    is not None:  lines.append(f"  {t(lang,'lbl_leg')}: {entry['leg']} {t(lang,'unit_cm')}")
+    if entry.get("arm")    is not None:  lines.append(f"  {t(lang,'lbl_arm')}: {entry['arm']} {t(lang,'unit_cm')}")
+    return "\n".join(lines)
+
+def _parse_decimal(txt):
+    """Return float or None; raise ValueError if invalid."""
+    if txt.lower() == "skip":
+        return None
+    val = float(txt.replace(",","."))
+    if val < 0: raise ValueError
+    return val
+
+async def cmd_body_menu(update, context):
+    q = update.callback_query; await q.answer(); lang = get_lang(context)
+    await q.edit_message_text(t(lang,"body_menu"), reply_markup=body_menu_keyboard(lang), parse_mode="HTML")
+
+# ── Add measurement ───────────────────────────────────────────────
+async def body_add_start(update, context):
+    q = update.callback_query; await q.answer(); lang = get_lang(context)
+    clients = db.get_all_clients()
+    if not clients:
+        await q.edit_message_text(t(lang,"no_clients"), reply_markup=body_menu_keyboard(lang), parse_mode="HTML")
+        return ConversationHandler.END
+    await q.edit_message_text(t(lang,"body_select_client"),
+                               reply_markup=client_list_keyboard(clients,"bodyadd",lang), parse_mode="HTML")
+    return BODY_SELECT_CLIENT
+
+async def body_add_client(update, context):
+    q = update.callback_query; await q.answer(); lang = get_lang(context)
+    cid = int(q.data.split(":")[1]); c = db.get_client(cid)
+    context.user_data["bm"] = {"cid": cid, "name": c["name"]}
+    await q.edit_message_text(t(lang,"body_date_prompt"), parse_mode="HTML")
+    return BODY_DATE
+
+async def body_add_date(update, context):
+    lang = get_lang(context)
+    try:
+        d = datetime.strptime(update.message.text.strip(), "%d/%m/%Y").date()
+        context.user_data["bm"]["date"] = d.isoformat()
+        await update.message.reply_text(t(lang,"body_weight_prompt"), parse_mode="HTML")
+        return BODY_WEIGHT
+    except ValueError:
+        await update.message.reply_text(t(lang,"invalid_date"), parse_mode="HTML")
+        return BODY_DATE
+
+async def body_add_weight(update, context):
+    lang = get_lang(context)
+    try:
+        context.user_data["bm"]["weight"] = _parse_decimal(update.message.text.strip())
+        await update.message.reply_text(t(lang,"body_chest_prompt"), parse_mode="HTML")
+        return BODY_CHEST
+    except ValueError:
+        await update.message.reply_text(t(lang,"invalid_decimal"), parse_mode="HTML")
+        return BODY_WEIGHT
+
+async def body_add_chest(update, context):
+    lang = get_lang(context)
+    try:
+        context.user_data["bm"]["chest"] = _parse_decimal(update.message.text.strip())
+        await update.message.reply_text(t(lang,"body_waist_prompt"), parse_mode="HTML")
+        return BODY_WAIST
+    except ValueError:
+        await update.message.reply_text(t(lang,"invalid_decimal"), parse_mode="HTML")
+        return BODY_CHEST
+
+async def body_add_waist(update, context):
+    lang = get_lang(context)
+    try:
+        context.user_data["bm"]["waist"] = _parse_decimal(update.message.text.strip())
+        await update.message.reply_text(t(lang,"body_hips_prompt"), parse_mode="HTML")
+        return BODY_HIPS
+    except ValueError:
+        await update.message.reply_text(t(lang,"invalid_decimal"), parse_mode="HTML")
+        return BODY_WAIST
+
+async def body_add_hips(update, context):
+    lang = get_lang(context)
+    try:
+        context.user_data["bm"]["hips"] = _parse_decimal(update.message.text.strip())
+        await update.message.reply_text(t(lang,"body_leg_prompt"), parse_mode="HTML")
+        return BODY_LEG
+    except ValueError:
+        await update.message.reply_text(t(lang,"invalid_decimal"), parse_mode="HTML")
+        return BODY_HIPS
+
+async def body_add_leg(update, context):
+    lang = get_lang(context)
+    try:
+        context.user_data["bm"]["leg"] = _parse_decimal(update.message.text.strip())
+        await update.message.reply_text(t(lang,"body_arm_prompt"), parse_mode="HTML")
+        return BODY_ARM
+    except ValueError:
+        await update.message.reply_text(t(lang,"invalid_decimal"), parse_mode="HTML")
+        return BODY_LEG
+
+async def body_add_arm(update, context):
+    lang = get_lang(context)
+    try:
+        bm = context.user_data["bm"]
+        bm["arm"] = _parse_decimal(update.message.text.strip())
+        db.add_body_measurement(bm["cid"], bm["date"],
+                                bm.get("weight"), bm.get("chest"), bm.get("waist"),
+                                bm.get("hips"), bm.get("leg"), bm.get("arm"))
+        try:
+            d_obj = datetime.strptime(bm["date"], "%Y-%m-%d").date()
+            d_fmt = fmt_date(d_obj, None, lang)
+        except:
+            d_fmt = bm["date"]
+        await update.message.reply_text(
+            t(lang,"body_saved", name=bm["name"], date=d_fmt),
+            reply_markup=body_menu_keyboard(lang), parse_mode="HTML")
+        return ConversationHandler.END
+    except ValueError:
+        await update.message.reply_text(t(lang,"invalid_decimal"), parse_mode="HTML")
+        return BODY_ARM
+
+# ── View measurements ─────────────────────────────────────────────
+async def body_view_start(update, context):
+    q = update.callback_query; await q.answer(); lang = get_lang(context)
+    clients = db.get_all_clients()
+    if not clients:
+        await q.edit_message_text(t(lang,"no_clients"), reply_markup=body_menu_keyboard(lang), parse_mode="HTML"); return
+    await q.edit_message_text(t(lang,"body_select_client"),
+                               reply_markup=client_list_keyboard(clients,"bodyview",lang), parse_mode="HTML")
+
+async def body_view_client(update, context):
+    q = update.callback_query; await q.answer(); lang = get_lang(context)
+    cid = int(q.data.split(":")[1]); c = db.get_client(cid)
+    entries = db.get_body_measurements(cid)
+    if not entries:
+        await q.edit_message_text(t(lang,"body_none"), reply_markup=body_menu_keyboard(lang), parse_mode="HTML"); return
+    txt = f"<b>📏 {c['name']}</b>\n" + "─"*28 + "\n\n"
+    for e in entries:
+        txt += _fmt_body_entry(e, lang) + "\n\n"
+    if len(txt) > 4000:
+        txt = txt[:3990] + "\n<i>…</i>"
+    await q.edit_message_text(txt, reply_markup=body_menu_keyboard(lang), parse_mode="HTML")
+
+# ── Edit measurement ──────────────────────────────────────────────
+async def body_edit_start(update, context):
+    q = update.callback_query; await q.answer(); lang = get_lang(context)
+    clients = db.get_all_clients()
+    if not clients:
+        await q.edit_message_text(t(lang,"no_clients"), reply_markup=body_menu_keyboard(lang), parse_mode="HTML")
+        return ConversationHandler.END
+    await q.edit_message_text(t(lang,"body_select_client"),
+                               reply_markup=client_list_keyboard(clients,"bodyeditcl",lang), parse_mode="HTML")
+    return BODY_EDIT_SELECT_CLIENT
+
+async def body_edit_select_client(update, context):
+    q = update.callback_query; await q.answer(); lang = get_lang(context)
+    cid = int(q.data.split(":")[1]); c = db.get_client(cid)
+    context.user_data["bm_edit_cid"] = cid; context.user_data["bm_edit_name"] = c["name"]
+    entries = db.get_body_measurements(cid)
+    if not entries:
+        await q.edit_message_text(t(lang,"body_none"), reply_markup=body_menu_keyboard(lang), parse_mode="HTML")
+        return ConversationHandler.END
+    kb = []
+    for e in entries:
+        try:
+            d_obj = datetime.strptime(e["meas_date"], "%Y-%m-%d").date()
+            label = fmt_date(d_obj, None, lang)
+        except:
+            label = e["meas_date"]
+        kb.append([InlineKeyboardButton(label, callback_data=f"bodyeditentry:{e['id']}")])
+    kb.append([InlineKeyboardButton(t(lang,"btn_cancel"), callback_data="body_menu")])
+    await q.edit_message_text(t(lang,"body_select_entry",action="edit"),
+                               reply_markup=InlineKeyboardMarkup(kb), parse_mode="HTML")
+    return BODY_EDIT_SELECT_ENTRY
+
+async def body_edit_select_entry(update, context):
+    q = update.callback_query; await q.answer(); lang = get_lang(context)
+    mid = int(q.data.split(":")[1])
+    context.user_data["bm_edit_mid"] = mid
+    e = db.get_body_measurement(mid)
+    # store current values
+    context.user_data["bm_edit_vals"] = {
+        "date": e["meas_date"], "weight": e["weight"], "chest": e["chest"],
+        "waist": e["waist"], "hips": e["hips"], "leg": e["leg"], "arm": e["arm"]
+    }
+    fields_en = ["date","weight","chest","waist","hips","leg","arm"]
+    labels = {
+        "date":   "📅 " + ("Date" if lang=="EN" else "Dată"),
+        "weight": t(lang,"lbl_weight"), "chest": t(lang,"lbl_chest"),
+        "waist":  t(lang,"lbl_waist"),  "hips":  t(lang,"lbl_hips"),
+        "leg":    t(lang,"lbl_leg"),    "arm":   t(lang,"lbl_arm"),
+    }
+    kb = [[InlineKeyboardButton(labels[f], callback_data=f"bodyeditfield:{f}")] for f in fields_en]
+    kb.append([InlineKeyboardButton(t(lang,"btn_cancel"), callback_data="body_menu")])
+    await q.edit_message_text(
+        t(lang,"body_edit_field_prompt") + "\n\n" + _fmt_body_entry(e, lang),
+        reply_markup=InlineKeyboardMarkup(kb), parse_mode="HTML")
+    return BODY_EDIT_FIELD
+
+async def body_edit_field(update, context):
+    q = update.callback_query; await q.answer(); lang = get_lang(context)
+    field = q.data.split(":")[1]; context.user_data["bm_edit_field"] = field
+    prompts = {
+        "date":   t(lang,"body_date_prompt"),   "weight": t(lang,"body_weight_prompt"),
+        "chest":  t(lang,"body_chest_prompt"),  "waist":  t(lang,"body_waist_prompt"),
+        "hips":   t(lang,"body_hips_prompt"),   "leg":    t(lang,"body_leg_prompt"),
+        "arm":    t(lang,"body_arm_prompt"),
+    }
+    await q.edit_message_text(prompts[field], parse_mode="HTML")
+    return BODY_EDIT_VALUE
+
+async def body_edit_value(update, context):
+    lang = get_lang(context)
+    field = context.user_data["bm_edit_field"]
+    mid   = context.user_data["bm_edit_mid"]
+    vals  = context.user_data["bm_edit_vals"]
+    txt   = update.message.text.strip()
+    try:
+        if field == "date":
+            d = datetime.strptime(txt, "%d/%m/%Y").date()
+            vals["date"] = d.isoformat()
+        else:
+            vals[field] = _parse_decimal(txt)
+        db.update_body_measurement(mid, vals["date"], vals["weight"], vals["chest"],
+                                   vals["waist"], vals["hips"], vals["leg"], vals["arm"])
+        await update.message.reply_text(t(lang,"body_updated"),
+                                         reply_markup=body_menu_keyboard(lang), parse_mode="HTML")
+        return ConversationHandler.END
+    except ValueError:
+        err = t(lang,"invalid_date") if field=="date" else t(lang,"invalid_decimal")
+        await update.message.reply_text(err, parse_mode="HTML")
+        return BODY_EDIT_VALUE
+
+# ── Delete measurement ────────────────────────────────────────────
+async def body_del_start(update, context):
+    q = update.callback_query; await q.answer(); lang = get_lang(context)
+    clients = db.get_all_clients()
+    if not clients:
+        await q.edit_message_text(t(lang,"no_clients"), reply_markup=body_menu_keyboard(lang), parse_mode="HTML")
+        return ConversationHandler.END
+    await q.edit_message_text(t(lang,"body_select_client"),
+                               reply_markup=client_list_keyboard(clients,"bodydelcl",lang), parse_mode="HTML")
+    return BODY_DEL_SELECT_CLIENT
+
+async def body_del_select_client(update, context):
+    q = update.callback_query; await q.answer(); lang = get_lang(context)
+    cid = int(q.data.split(":")[1]); c = db.get_client(cid)
+    context.user_data["bm_del_cid"] = cid; context.user_data["bm_del_name"] = c["name"]
+    entries = db.get_body_measurements(cid)
+    if not entries:
+        await q.edit_message_text(t(lang,"body_none"), reply_markup=body_menu_keyboard(lang), parse_mode="HTML")
+        return ConversationHandler.END
+    kb = []
+    for e in entries:
+        try:
+            d_obj = datetime.strptime(e["meas_date"], "%Y-%m-%d").date()
+            label = fmt_date(d_obj, None, lang)
+        except:
+            label = e["meas_date"]
+        kb.append([InlineKeyboardButton(f"🗑 {label}", callback_data=f"bodydelentry:{e['id']}")])
+    kb.append([InlineKeyboardButton(t(lang,"btn_cancel"), callback_data="body_menu")])
+    await q.edit_message_text(t(lang,"body_select_entry",action="delete"),
+                               reply_markup=InlineKeyboardMarkup(kb), parse_mode="HTML")
+    return BODY_DEL_SELECT_ENTRY
+
+async def body_del_select_entry(update, context):
+    q = update.callback_query; await q.answer(); lang = get_lang(context)
+    mid = int(q.data.split(":")[1])
+    context.user_data["bm_del_mid"] = mid
+    e = db.get_body_measurement(mid)
+    name = context.user_data["bm_del_name"]
+    try:
+        d_obj = datetime.strptime(e["meas_date"], "%Y-%m-%d").date()
+        d_fmt = fmt_date(d_obj, None, lang)
+    except:
+        d_fmt = e["meas_date"]
+    await q.edit_message_text(
+        t(lang,"body_confirm_delete", date=d_fmt, name=name),
+        reply_markup=confirm_keyboard(lang,"body_del_confirm","body_menu"), parse_mode="HTML")
+    return BODY_DEL_CONFIRM
+
+async def body_del_confirm(update, context):
+    q = update.callback_query; await q.answer(); lang = get_lang(context)
+    if q.data == "body_del_confirm":
+        db.delete_body_measurement(context.user_data["bm_del_mid"])
+        await q.edit_message_text(t(lang,"body_deleted"), reply_markup=body_menu_keyboard(lang), parse_mode="HTML")
+    else:
+        await q.edit_message_text(t(lang,"deletion_cancelled"), reply_markup=body_menu_keyboard(lang), parse_mode="HTML")
+    return ConversationHandler.END
+
 async def cancel(update, context):
     lang = get_lang(context)
     await update.message.reply_text(t(lang,"cancelled"), reply_markup=main_menu_keyboard(lang), parse_mode="HTML")
@@ -1424,6 +1843,39 @@ def main():
             CallbackQueryHandler(cancel_to_main, pattern="^(main_menu|workout_menu)$"),
         ])
 
+    body_add_conv = ConversationHandler(
+        entry_points=[CallbackQueryHandler(body_add_start, pattern="^body_add_start$")],
+        states={
+            BODY_SELECT_CLIENT:[CallbackQueryHandler(body_add_client, pattern="^bodyadd:")],
+            BODY_DATE:  [MessageHandler(filters.TEXT&~filters.COMMAND, body_add_date)],
+            BODY_WEIGHT:[MessageHandler(filters.TEXT&~filters.COMMAND, body_add_weight)],
+            BODY_CHEST: [MessageHandler(filters.TEXT&~filters.COMMAND, body_add_chest)],
+            BODY_WAIST: [MessageHandler(filters.TEXT&~filters.COMMAND, body_add_waist)],
+            BODY_HIPS:  [MessageHandler(filters.TEXT&~filters.COMMAND, body_add_hips)],
+            BODY_LEG:   [MessageHandler(filters.TEXT&~filters.COMMAND, body_add_leg)],
+            BODY_ARM:   [MessageHandler(filters.TEXT&~filters.COMMAND, body_add_arm)],
+        }, fallbacks=[CommandHandler("cancel",cancel),
+                      CallbackQueryHandler(lambda u,c: (u.callback_query.answer(), ConversationHandler.END)[1], pattern="^body_menu$")])
+
+    body_edit_conv = ConversationHandler(
+        entry_points=[CallbackQueryHandler(body_edit_start, pattern="^body_edit_start$")],
+        states={
+            BODY_EDIT_SELECT_CLIENT:[CallbackQueryHandler(body_edit_select_client, pattern="^bodyeditcl:")],
+            BODY_EDIT_SELECT_ENTRY: [CallbackQueryHandler(body_edit_select_entry,  pattern="^bodyeditentry:")],
+            BODY_EDIT_FIELD:        [CallbackQueryHandler(body_edit_field,          pattern="^bodyeditfield:")],
+            BODY_EDIT_VALUE:        [MessageHandler(filters.TEXT&~filters.COMMAND,  body_edit_value)],
+        }, fallbacks=[CommandHandler("cancel",cancel),
+                      CallbackQueryHandler(lambda u,c: (u.callback_query.answer(), ConversationHandler.END)[1], pattern="^body_menu$")])
+
+    body_del_conv = ConversationHandler(
+        entry_points=[CallbackQueryHandler(body_del_start, pattern="^body_del_start$")],
+        states={
+            BODY_DEL_SELECT_CLIENT:[CallbackQueryHandler(body_del_select_client, pattern="^bodydelcl:")],
+            BODY_DEL_SELECT_ENTRY: [CallbackQueryHandler(body_del_select_entry,  pattern="^bodydelentry:")],
+            BODY_DEL_CONFIRM:      [CallbackQueryHandler(body_del_confirm,        pattern="^(body_del_confirm|body_menu)$")],
+        }, fallbacks=[CommandHandler("cancel",cancel),
+                      CallbackQueryHandler(lambda u,c: (u.callback_query.answer(), ConversationHandler.END)[1], pattern="^body_menu$")])
+
     add_pkg_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(add_pkg_start, pattern="^add_pkg_start$")],
         states={
@@ -1452,7 +1904,8 @@ def main():
     app.add_handler(CommandHandler("start", start))
     for conv in [add_client_conv, edit_client_conv, del_client_conv,
                  add_session_conv, edit_session_conv, del_session_conv,
-                 add_plan_conv, add_pkg_conv, edit_pkg_conv]:
+                 add_plan_conv, add_pkg_conv, edit_pkg_conv,
+                 body_add_conv, body_edit_conv, body_del_conv]:
         app.add_handler(conv)
 
     app.add_handler(CallbackQueryHandler(set_language,          pattern="^set_lang:"))
@@ -1474,10 +1927,13 @@ def main():
     app.add_handler(CallbackQueryHandler(cmd_list_plans,        pattern="^list_plans$"))
     app.add_handler(CallbackQueryHandler(cmd_view_client_plan,  pattern="^view_client_plan$"))
     app.add_handler(CallbackQueryHandler(cmd_show_client_plans, pattern="^view_plan:"))
+    app.add_handler(CallbackQueryHandler(cmd_body_menu,         pattern="^body_menu$"))
+    app.add_handler(CallbackQueryHandler(body_view_start,       pattern="^body_view_start$"))
+    app.add_handler(CallbackQueryHandler(body_view_client,      pattern="^bodyview:"))
     app.add_handler(CallbackQueryHandler(unknown_callback))
 
     setup_scheduler(app, db)
-    logger.info("🏋️  FitCoach Bot v3 is running…")
+    logger.info("🏋️  FitCoach Bot v4 is running…")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
